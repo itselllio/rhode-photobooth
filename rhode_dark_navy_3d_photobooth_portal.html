@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>rhode — dark navy photobooth</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Editorial Sans-Serif Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --studio-bg: #F7F7F5;
+      --interior-wall: #F5F5F2;
+      --navy-rich: #1A2E5A;
+      --navy-deep: #142449;
+      --panel-border: #E2E2DE;
+      --led-warm: #FFF3DC;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--studio-bg);
+      color: var(--navy-rich);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .font-rhode {
+      font-family: 'Plus Jakarta Sans', 'Helvetica Neue', 'Inter', sans-serif;
+      letter-spacing: -0.048em;
+    }
+
+    /* =====================================================================
+       STAGES 1 & 2: FULL-VIEWPORT 3D WEBGL STAGE
+       ===================================================================== */
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: radial-gradient(circle at 50% 48%, #F8F8F6 0%, #F2F2EF 75%, #EAEAE6 100%);
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    canvas#webgl-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    @keyframes floatDown {
+      0%, 100% { transform: translateY(0); opacity: 0.55; }
+      50% { transform: translateY(4px); opacity: 1; }
+    }
+    .animate-float-down {
+      animation: floatDown 2.2s ease-in-out infinite;
+    }
+
+    /* =====================================================================
+       STAGE 3: CLEAN MATTE WHITE INTERIOR WALL (#F5F5F2) — NO RIGHT PORTAL
+       ===================================================================== */
+    #interior-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      background: radial-gradient(ellipse 75% 65% at 50% 42%, #FAF9F6 0%, #F5F5F2 60%, #ECECE7 100%);
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(1.035);
+      transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    #interior-stage.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    /* Subtle matte architectural wall grain */
+    #interior-stage::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(rgba(26, 46, 90, 0.022) 1px, transparent 0);
+      background-size: 8px 8px;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    /* =====================================================================
+       LEFT COLUMN: EXACT-HEIGHT-MATCHED COIN SLOTS + DEBOSSED MENU PANEL
+       ===================================================================== */
+    .coin-menu-grid {
+      display: grid;
+      grid-template-columns: 30px 168px;
+      grid-template-rows: repeat(4, 62px);
+      column-gap: 14px;
+      row-gap: 12px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 640px) {
+      .coin-menu-grid {
+        grid-template-columns: 28px 154px;
+        grid-template-rows: repeat(4, 54px);
+        column-gap: 12px;
+        row-gap: 10px;
+      }
+    }
+
+    /* Metallic Silver-Rimmed Recessed Vertical Coin Slot */
+    .coin-slot-btn {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 7px;
+      background: linear-gradient(145deg, #F3F4F6 0%, #D9DDE3 55%, #C7CDD6 100%);
+      border: 1px solid #C6CBD3;
+      box-shadow:
+        -1.5px -1.5px 3px rgba(255, 255, 255, 0.9),
+        2px 3px 6px rgba(26, 46, 90, 0.14),
+        inset 0 1px 1px rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .coin-slot-btn:hover,
+    .coin-slot-btn.slot-hover-active {
+      transform: scale(1.06);
+      border-color: #1A2E5A;
+      box-shadow:
+        0 0 0 3px rgba(26, 46, 90, 0.18),
+        0 0 18px rgba(26, 46, 90, 0.35),
+        inset 0 1px 2px rgba(255, 255, 255, 0.95);
+    }
+    .coin-slot-slit {
+      width: 6px;
+      height: 68%;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #161E2E 0%, #090D16 100%);
+      box-shadow:
+        inset 1px 2px 3px rgba(0, 0, 0, 0.9),
+        1px 0 0 rgba(255, 255, 255, 0.75);
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    .coin-slot-btn.slot-hover-active .coin-slot-slit {
+      background: #1A2E5A;
+      box-shadow: 0 0 8px rgba(26, 46, 90, 0.85), inset 0 0 3px #090D16;
+    }
+
+    /* Single Debossed Rounded-Rectangle Menu Panel — EXACT Same Total Height as the 4 Slots */
+    .menu-debossed-panel {
+      grid-column: 2;
+      grid-row: 1 / 5;
+      display: grid;
+      grid-template-rows: repeat(4, 1fr);
+      background: linear-gradient(180deg, #F1F1ED 0%, #F5F5F1 100%);
+      border: 1.5px solid #E2E2DE;
+      border-radius: 14px;
+      box-shadow:
+        inset 1.5px 2px 5px rgba(26, 46, 90, 0.055),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.85),
+        0 1px 0 rgba(255, 255, 255, 0.9);
+      padding: 0 14px;
+    }
+
+    .menu-row-btn {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 2px 4px;
+      transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+    .menu-row-btn:hover {
+      background-color: rgba(26, 46, 90, 0.05);
+    }
+    .menu-row-btn.row-highlight {
+      background-color: rgba(26, 46, 90, 0.09);
+    }
+
+    /* =====================================================================
+       TACTILE DRAGGABLE BRUSHED-SILVER RHODE COIN
+       ===================================================================== */
+    .coin-tray {
+      background: linear-gradient(180deg, #ECECE8 0%, #F4F4F0 100%);
+      border: 1px solid #DFDFDA;
+      box-shadow:
+        inset 0 2px 5px rgba(26, 46, 90, 0.07),
+        0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    @keyframes coinIdleFloat {
+      0%, 100% { transform: translateY(0px) rotate(-4deg); }
+      50% { transform: translateY(-3px) rotate(2deg); }
+    }
+
+    .rhode-coin {
+      width: 54px;
+      height: 54px;
+      border-radius: 9999px;
+      background:
+        conic-gradient(from 35deg, #ECEFF4, #BFC7D4, #FFFFFF, #A5B0C2, #E6EAF0, #B8C1CF, #ECEFF4);
+      box-shadow:
+        0 6px 16px rgba(26, 46, 90, 0.22),
+        0 2px 4px rgba(26, 46, 90, 0.14),
+        inset 0 2px 3px rgba(255, 255, 255, 0.95),
+        inset 0 -2px 4px rgba(74, 88, 114, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
+      cursor: grab;
+      touch-action: none;
+      transition: transform 0.18s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+    .rhode-coin.idle-float {
+      animation: coinIdleFloat 3s ease-in-out infinite;
+    }
+    .rhode-coin:hover {
+      box-shadow:
+        0 10px 22px rgba(26, 46, 90, 0.28),
+        inset 0 2px 3px rgba(255, 255, 255, 1),
+        inset 0 -2px 4px rgba(74, 88, 114, 0.5);
+    }
+    .rhode-coin-inner {
+      width: 44px;
+      height: 44px;
+      border-radius: 9999px;
+      border: 1px solid rgba(26, 46, 90, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: -0.05em;
+      color: #2B3B5C;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+      pointer-events: none;
+    }
+
+    /* Floating Drag / Insertion Coin Layer */
+    #drag-coin-ghost {
+      position: fixed;
+      z-index: 80;
+      pointer-events: none;
+      opacity: 0;
+      left: 0;
+      top: 0;
+      transform-origin: center center;
+      will-change: transform, opacity;
+      transition: opacity 0.12s ease;
+    }
+    #drag-coin-ghost.active-drag {
+      opacity: 1;
+      cursor: grabbing;
+      box-shadow:
+        0 16px 32px rgba(26, 46, 90, 0.34),
+        inset 0 2px 4px rgba(255, 255, 255, 0.95);
+    }
+    #drag-coin-ghost.tilted-for-slot {
+      transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes coinSlideIntoSlot {
+      0% {
+        opacity: 1;
+        transform: translate(var(--sx), var(--sy)) scale(0.95) perspective(240px) rotateY(68deg);
+      }
+      55% {
+        opacity: 1;
+        transform: translate(calc(var(--sx) + 4px), var(--sy)) scale(0.84) perspective(240px) rotateY(80deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(var(--sx) + 12px), var(--sy)) scale(0.45) perspective(240px) rotateY(89deg);
+      }
+    }
+    .coin-inserting-anim {
+      animation: coinSlideIntoSlot 0.42s cubic-bezier(0.32, 0.04, 0.22, 1) forwards;
+    }
+
+    /* =====================================================================
+       WARM-WHITE VERTICAL ROUNDED-RECTANGLE LED MIRROR ON WHITE WALL
+       ===================================================================== */
+    .led-mirror-ring {
+      position: relative;
+      border-radius: 76px;
+      padding: 15px;
+      background: linear-gradient(180deg, #FFFDF8 0%, #FFF6E6 50%, #FFEED1 100%);
+      border: 1.5px solid #EAE6DC;
+      box-shadow:
+        0 0 22px rgba(255, 234, 194, 0.65),
+        0 14px 36px rgba(26, 46, 90, 0.13),
+        0 4px 10px rgba(26, 46, 90, 0.08),
+        inset 0 0 10px rgba(255, 255, 255, 0.95);
+      transition: box-shadow 0.65s ease, border-color 0.65s ease;
+    }
+    .led-mirror-ring.unlocked {
+      border-color: #FFF5E0;
+      box-shadow:
+        0 0 34px rgba(255, 232, 184, 0.95),
+        0 0 84px rgba(255, 224, 165, 0.68),
+        0 18px 46px rgba(26, 46, 90, 0.16),
+        inset 0 0 18px rgba(255, 255, 255, 1);
+    }
+
+    .mirror-glass {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 62px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 24%, #E8ECEF 0%, #D4DAE2 48%, #BFC7D2 100%);
+      box-shadow:
+        inset 0 0 28px rgba(26, 46, 90, 0.16),
+        inset 0 2px 10px rgba(255, 255, 255, 0.7);
+    }
+
+    /* Subtle reflective glass diagonal sheen */
+    .mirror-glass::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(125deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.06) 36%, transparent 56%);
+      pointer-events: none;
+      z-index: 6;
+    }
+
+    @keyframes mirrorFlash {
+      0% { opacity: 0; }
+      14% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .flash-trigger {
+      animation: mirrorFlash 0.44s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* =====================================================================
+       CENTERED UNIFORM-SIZE 3D EMBOSSED DARK NAVY "rhode" LETTERING
+       (Every letter r, h, o, d, e is the EXACT SAME size & baseline!)
+       ===================================================================== */
+    .embossed-wordmark {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: center;
+      font-family: 'Plus Jakarta Sans', 'Helvetica Neue', sans-serif;
+      font-weight: 800;
+      font-size: clamp(68px, 9.2vw, 108px);
+      line-height: 0.92;
+      letter-spacing: -0.045em;
+      color: #1A2E5A;
+      user-select: none;
+      position: relative;
+    }
+
+    .embossed-letter {
+      display: inline-block;
+      color: #1A2E5A;
+      text-shadow:
+        -1px -1px 0px rgba(68, 98, 158, 0.45),
+        1px 1px 0px #142449,
+        2px 2.5px 0px #101D3B,
+        3px 5px 10px rgba(26, 46, 90, 0.28),
+        0px 10px 18px rgba(26, 46, 90, 0.14);
+    }
+
+    /* Wrapper around the uniform-size "o" with recessed circular chute inside its counter */
+    .embossed-o-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Recessed 3D dispensing tunnel positioned cleanly inside the "o" counter */
+    .o-chute-hole {
+      position: absolute;
+      left: 50%;
+      top: 63.5%;
+      width: 0.355em;
+      height: 0.375em;
+      transform: translate(-50%, -50%);
+      border-radius: 9999px;
+      background: radial-gradient(circle at 42% 38%, #162547 0%, #0D172E 58%, #060B17 100%);
+      box-shadow:
+        inset 2.5px 4px 8px rgba(0, 0, 0, 0.92),
+        inset -1.5px -2px 4px rgba(56, 84, 145, 0.3),
+        0 0 0 1px rgba(14, 24, 48, 0.5);
+      z-index: 2;
+      pointer-events: none;
+      transition: box-shadow 0.4s ease;
+    }
+    .o-chute-hole.dispensing-glow {
+      box-shadow:
+        inset 2.5px 4px 8px rgba(0, 0, 0, 0.88),
+        inset 0 0 12px rgba(255, 243, 220, 0.38),
+        0 0 16px rgba(26, 46, 90, 0.35);
+    }
+
+    /* Glossy Dark Navy Peptide Lip Boost popping out from the "o" counter */
+    #lip-boost-wrapper {
+      position: absolute;
+      left: 50%;
+      top: 63.5%;
+      width: 62px;
+      height: 150px;
+      transform: translate(-50%, -50%) scale(0.14) translateY(6px) rotate(14deg);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 35;
+      transform-origin: center center;
+      filter: drop-shadow(0 16px 22px rgba(16, 29, 59, 0.42));
+    }
+
+    @keyframes lipBoostPopOut {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.14) translateY(8px) rotate(18deg);
+      }
+      30% {
+        opacity: 1;
+        transform: translate(-50%, -55%) scale(0.76) translateY(-20px) rotate(-14deg);
+      }
+      64% {
+        opacity: 1;
+        transform: translate(-50%, -62%) scale(1.08) translateY(-50px) rotate(-10deg);
+      }
+      84% {
+        opacity: 1;
+        transform: translate(-50%, -57%) scale(0.97) translateY(-40px) rotate(-12deg);
+      }
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -58%) scale(1.0) translateY(-44px) rotate(-11deg);
+      }
+    }
+
+    #lip-boost-wrapper.popped {
+      pointer-events: none;
+      animation: lipBoostPopOut 0.85s cubic-bezier(0.22, 1.28, 0.36, 1) forwards;
+    }
+
+    @keyframes lipBoostVanish {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -58%) scale(1.0) translateY(-44px) rotate(-11deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -78%) scale(0.32) translateY(-72px) rotate(-18deg);
+      }
+    }
+
+    #lip-boost-wrapper.vanishing {
+      pointer-events: none;
+      animation: lipBoostVanish 0.48s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes sparklePop {
+      0% { transform: scale(0) rotate(0deg); opacity: 0; }
+      40% { transform: scale(1.2) rotate(20deg); opacity: 1; }
+      100% { transform: scale(0.5) rotate(45deg); opacity: 0; }
+    }
+    .sparkle-burst {
+      animation: sparklePop 1s ease-out forwards;
+    }
+
+    .subtle-scroll::-webkit-scrollbar { width: 4px; }
+    .subtle-scroll::-webkit-scrollbar-track { background: transparent; }
+    .subtle-scroll::-webkit-scrollbar-thumb { background: rgba(26, 46, 90, 0.2); border-radius: 999px; }
+  </style>
+</head>
+<body>
+
+  <!-- =======================================================================
+       STAGES 1 & 2: FULL-VIEWPORT 3D WEBGL DARK NAVY PHOTOBOOTH
+       ======================================================================= -->
+  <div id="canvas-container" aria-label="Interactive 3D Rhode Dark Navy Photobooth">
+    <canvas id="webgl-canvas"></canvas>
+  </div>
+
+  <!-- Stage 1 & 2 Ultra-Minimalist HUD (NO "Drag to Rotate" text anywhere) -->
+  <div id="stage12-hud" class="fixed inset-0 z-20 pointer-events-none transition-opacity duration-500">
+    <!-- Top Center: Subtle Scroll Cue -->
+    <div id="scroll-top-cue" class="fixed top-6 sm:top-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-auto cursor-pointer group">
+      <span class="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.24em] text-[#4c5464] group-hover:text-[#1A2E5A] transition-colors">
+        SCROLL DOWN TO ENTER
+      </span>
+      <svg class="w-4 h-4 text-[#6d7484] group-hover:text-[#1A2E5A] animate-float-down transition-colors" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m0 0l-5-5m5 5l5-5" />
+      </svg>
+    </div>
+
+    <!-- Far Left Chevron (<) Rotate 90° -->
+    <button id="rotate-left-btn" aria-label="Rotate Booth Left 90 Degrees"
+      class="fixed left-3 sm:left-8 top-1/2 -translate-y-1/2 pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center text-[#555f73] hover:text-[#1A2E5A] hover:bg-[#1A2E5A]/5 active:scale-95 transition-all">
+      <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+      </svg>
+    </button>
+
+    <!-- Far Right Chevron (>) Rotate 90° -->
+    <button id="rotate-right-btn" aria-label="Rotate Booth Right 90 Degrees"
+      class="fixed right-3 sm:right-8 top-1/2 -translate-y-1/2 pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center text-[#555f73] hover:text-[#1A2E5A] hover:bg-[#1A2E5A]/5 active:scale-95 transition-all">
+      <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+      </svg>
+    </button>
+
+    <!-- Bottom Center: Clean Thin Progress Bar & Stage Label -->
+    <div class="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 w-56 sm:w-72">
+      <div class="w-full h-[2.5px] bg-[#1A2E5A]/14 rounded-full overflow-hidden">
+        <div id="stage-progress-fill" class="h-full bg-[#1A2E5A] rounded-full transition-all duration-100" style="width: 4%;"></div>
+      </div>
+      <span id="stage-progress-label" class="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.22em] text-[#5c6474]">
+        STAGE 1: 3D INSPECTION
+      </span>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       STAGE 3: CLEAN MATTE WHITE INTERIOR WALL (#F5F5F2) — NO RIGHT PORTAL
+       ======================================================================= -->
+  <section id="interior-stage" aria-label="Inside the Rhode Photobooth">
+    <!-- Top-Left: Clean Minimal Exit Booth Button -->
+    <button id="exit-booth-btn"
+      class="fixed top-5 left-5 sm:top-7 sm:left-8 z-40 inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/80 hover:bg-white border border-[#E2E2DE] text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.2em] text-[#1A2E5A]/80 hover:text-[#1A2E5A] shadow-sm transition-all backdrop-blur-md">
+      <span>←</span>
+      <span>EXIT BOOTH</span>
+    </button>
+
+    <!-- Balanced Centered Editorial Composition on Matte White Wall -->
+    <div class="relative z-10 w-full min-h-full flex flex-col items-center justify-center px-4 sm:px-6 pt-16 pb-8">
+
+      <!-- Main Row: Left Coin-Slot/Menu Unit + Center Glowing Mirror + Empty Right Balance Spacer -->
+      <div class="w-full max-w-[1040px] flex flex-col md:flex-row items-center justify-center gap-6 sm:gap-8 md:gap-10">
+
+        <!-- LEFT COLUMN: Exact-Height-Matched 4 Coin Slots & Menu Panel + Draggable Silver Coin -->
+        <div class="flex flex-col items-center md:items-end gap-4 order-2 md:order-1 md:w-[250px]">
+
+          <!-- 4 Vertical Metallic Coin Slots + Single Debossed Menu Panel (Exact Same Total Height) -->
+          <div class="coin-menu-grid" role="group" aria-label="Insert Rhode Coin Slots">
+            <!-- Slot 1 -->
+            <button class="coin-slot-btn" style="grid-column: 1; grid-row: 1;" data-slot="0" data-shade="peptide lip boost — birthday navy" title="Drag coin here or click: peptide lip boost">
+              <span class="coin-slot-slit"></span>
+            </button>
+            <!-- Slot 2 -->
+            <button class="coin-slot-btn" style="grid-column: 1; grid-row: 2;" data-slot="1" data-shade="ribbon — peptide lip tint" title="Drag coin here or click: ribbon">
+              <span class="coin-slot-slit"></span>
+            </button>
+            <!-- Slot 3 -->
+            <button class="coin-slot-btn" style="grid-column: 1; grid-row: 3;" data-slot="2" data-shade="toast — peptide lip tint" title="Drag coin here or click: toast">
+              <span class="coin-slot-slit"></span>
+            </button>
+            <!-- Slot 4 -->
+            <button class="coin-slot-btn" style="grid-column: 1; grid-row: 4;" data-slot="3" data-shade="espresso — peptide lip tint" title="Drag coin here or click: espresso">
+              <span class="coin-slot-slit"></span>
+            </button>
+
+            <!-- Single Debossed Rounded-Rectangle Menu Panel spanning rows 1–4 -->
+            <div class="menu-debossed-panel">
+              <button type="button" class="menu-row-btn" data-slot="0">
+                <span class="font-rhode font-bold text-[12.5px] sm:text-[13.5px] text-[#1A2E5A] leading-tight">peptide lip boost</span>
+                <span class="text-[9.5px] sm:text-[10px] tracking-[0.04em] text-[#64728C] mt-0.5">birthday navy</span>
+              </button>
+
+              <button type="button" class="menu-row-btn" data-slot="1">
+                <span class="font-rhode font-bold text-[12.5px] sm:text-[13.5px] text-[#1A2E5A] leading-tight">ribbon</span>
+                <span class="text-[9.5px] sm:text-[10px] tracking-[0.04em] text-[#64728C] mt-0.5">peptide lip tint</span>
+              </button>
+
+              <button type="button" class="menu-row-btn" data-slot="2">
+                <span class="font-rhode font-bold text-[12.5px] sm:text-[13.5px] text-[#1A2E5A] leading-tight">toast</span>
+                <span class="text-[9.5px] sm:text-[10px] tracking-[0.04em] text-[#64728C] mt-0.5">peptide lip tint</span>
+              </button>
+
+              <button type="button" class="menu-row-btn" data-slot="3">
+                <span class="font-rhode font-bold text-[12.5px] sm:text-[13.5px] text-[#1A2E5A] leading-tight">espresso</span>
+                <span class="text-[9.5px] sm:text-[10px] tracking-[0.04em] text-[#64728C] mt-0.5">peptide lip tint</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Draggable Brushed-Silver Rhode Token resting on Subtle Tray -->
+          <div class="w-full max-w-[212px] flex items-center justify-center gap-3.5 px-4 py-2.5 rounded-2xl coin-tray">
+            <div id="draggable-coin" class="rhode-coin idle-float shrink-0" role="button" tabindex="0" aria-label="Drag Rhode Silver Coin into a Slot">
+              <div class="rhode-coin-inner">rhode</div>
+            </div>
+            <div class="flex flex-col text-left">
+              <span id="coin-tray-label" class="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#1A2E5A]">
+                DRAG COIN TO SLOT
+              </span>
+              <span class="text-[9px] text-[#6e7b94] mt-0.5">or tap any slot</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CENTER COLUMN: Glowing Warm-White Vertical Rounded-Rectangle LED Mirror -->
+        <div class="order-1 md:order-2 flex flex-col items-center">
+          <div id="led-mirror-ring" class="led-mirror-ring w-[262px] h-[346px] sm:w-[322px] sm:h-[422px] md:w-[346px] md:h-[452px]">
+            <div class="mirror-glass">
+              <!-- Live Mirrored WebRTC Video Feed -->
+              <video id="webcam-video" autoplay playsinline muted
+                class="hidden absolute inset-0 w-full h-full object-cover scale-x-[-1] z-1"></video>
+
+              <!-- Editorial Studio Mirror Reflection (when webcam is off) -->
+              <div id="mirror-ambient-bg" class="absolute inset-0 flex flex-col items-center justify-center z-1 pointer-events-none">
+                <div class="w-44 h-44 rounded-full bg-white/35 blur-3xl"></div>
+                <span id="studio-badge-mirror" class="hidden mt-2 px-3 py-1 rounded-full bg-[#1A2E5A]/12 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-[#1A2E5A]">
+                  STUDIO MODE ACTIVE
+                </span>
+              </div>
+
+              <!-- 3-2-1 Countdown Overlay -->
+              <div id="countdown-overlay" class="hidden absolute inset-0 z-20 flex-col items-center justify-center bg-[#1A2E5A]/30 backdrop-blur-[2px]">
+                <span id="countdown-number" class="font-rhode font-bold text-7xl sm:text-8xl text-white drop-shadow-[0_4px_24px_rgba(26,46,90,0.45)]">3</span>
+                <span id="countdown-shot-label" class="mt-2 text-[10px] font-medium uppercase tracking-[0.26em] text-white/95">SHOT 1 OF 4</span>
+              </div>
+
+              <!-- Bright Warm-White Camera Flash -->
+              <div id="mirror-flash" class="absolute inset-0 z-30 bg-white opacity-0 pointer-events-none"></div>
+
+              <!-- Locked Prompt (Before Coin Insertion) -->
+              <div id="mirror-locked-ui" class="absolute inset-x-0 bottom-14 z-10 px-6 text-center transition-all duration-500">
+                <div class="inline-block px-4 py-2.5 rounded-2xl bg-white/75 backdrop-blur-md border border-[#1A2E5A]/10 shadow-sm">
+                  <p class="text-[10.5px] sm:text-[11px] leading-relaxed text-[#2c3c5c]">
+                    Drag the silver <span class="font-semibold text-[#1A2E5A]">rhode</span> coin into a slot to dispense &amp; unlock camera
+                  </p>
+                </div>
+              </div>
+
+              <!-- Unlocked Camera Controls (After Dark Blue Lip Boost Pops Out) -->
+              <div id="mirror-unlocked-ui" class="hidden absolute inset-x-0 bottom-14 z-10 px-4 flex-col items-center gap-2 transition-all duration-500">
+                <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                  <button id="enable-camera-btn"
+                    class="px-3.5 py-2 rounded-full bg-white/85 hover:bg-white border border-[#1A2E5A]/15 text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-[0.15em] text-[#1A2E5A] shadow-sm transition-all">
+                    ENABLE CAMERA
+                  </button>
+                  <button id="studio-mode-btn"
+                    class="px-3.5 py-2 rounded-full bg-white/65 hover:bg-white border border-[#1A2E5A]/12 text-[9.5px] sm:text-[10px] font-medium uppercase tracking-[0.15em] text-[#455573] transition-all">
+                    STUDIO MODE
+                  </button>
+                </div>
+                <button id="take-strip-btn"
+                  class="px-5 py-2.5 rounded-full bg-[#1A2E5A] hover:bg-[#142449] text-white text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.18em] shadow-[0_6px_18px_rgba(26,46,90,0.32)] active:scale-95 transition-all">
+                  TAKE 4-SHOT STRIP
+                </button>
+              </div>
+
+              <!-- Subtle Camera Lens & Flash Indicator Dot at Bottom Center of Mirror -->
+              <div class="absolute bottom-3.5 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 pointer-events-none">
+                <div class="w-5 h-5 rounded-full bg-[#101829] border border-white/65 shadow-[inset_0_1px_4px_rgba(0,0,0,0.95)] flex items-center justify-center">
+                  <div class="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-[#35528d] via-[#101c36] to-[#050810] ring-1 ring-white/15"></div>
+                </div>
+                <div id="camera-led-dot" class="w-1.5 h-1.5 rounded-full bg-[#1A2E5A]/25 transition-all duration-500"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT SPACER (Clean Empty Matte White Wall — Keeps Mirror & Logo Perfectly Centered, NO Right Portal) -->
+        <div class="hidden md:block md:w-[250px] order-3" aria-hidden="true"></div>
+      </div>
+
+      <!-- DIRECTLY BELOW MIRROR, PERFECTLY CENTERED: UNIFORM-SIZE EMBOSSED DARK NAVY "rhode" -->
+      <div class="mt-3 sm:mt-5 w-full flex flex-col items-center justify-center">
+        <div class="embossed-wordmark" aria-label="rhode dark navy dispenser">
+          <span class="embossed-letter">r</span>
+          <span class="embossed-letter">h</span>
+
+          <!-- Uniform-size "o" with recessed circular chute inside its counter -->
+          <span class="embossed-o-wrap" id="o-chute">
+            <span class="embossed-letter">o</span>
+            <span class="o-chute-hole" id="o-chute-hole"></span>
+
+            <!-- Sparkle Accent on Dispense -->
+            <svg id="pop-sparkle" class="hidden absolute -top-4 -right-3 w-7 h-7 text-[#1A2E5A] pointer-events-none z-40" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l2.1 6.5L21 11l-6.9 2.5L12 20l-2.1-6.5L3 11l6.9-2.5L12 2z" />
+            </svg>
+
+            <!-- GLOSSY DARK NAVY BLUE RHODE PEPTIDE LIP BOOST SQUEEZE TUBE -->
+            <div id="lip-boost-wrapper" aria-hidden="true">
+              <svg viewBox="0 0 120 290" class="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="tubeNavyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#0C1730" />
+                    <stop offset="18%" stop-color="#16274D" />
+                    <stop offset="34%" stop-color="#2B4682" />
+                    <stop offset="48%" stop-color="#16274D" />
+                    <stop offset="82%" stop-color="#111F40" />
+                    <stop offset="100%" stop-color="#0A1328" />
+                  </linearGradient>
+
+                  <linearGradient id="capNavyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#091124" />
+                    <stop offset="22%" stop-color="#1B3061" />
+                    <stop offset="36%" stop-color="#335196" />
+                    <stop offset="56%" stop-color="#142349" />
+                    <stop offset="100%" stop-color="#080F21" />
+                  </linearGradient>
+
+                  <linearGradient id="specularStrip" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,0)" />
+                    <stop offset="50%" stop-color="rgba(255,255,255,0.4)" />
+                    <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+                  </linearGradient>
+                </defs>
+
+                <!-- Top Crimped Seal Edge -->
+                <rect x="14" y="6" width="92" height="16" rx="2" fill="#132247" stroke="#253E75" stroke-width="1" />
+                <g stroke="#2C498A" stroke-width="1.4" opacity="0.72">
+                  <line x1="20" y1="8" x2="20" y2="20" />
+                  <line x1="25" y1="8" x2="25" y2="20" />
+                  <line x1="30" y1="8" x2="30" y2="20" />
+                  <line x1="35" y1="8" x2="35" y2="20" />
+                  <line x1="40" y1="8" x2="40" y2="20" />
+                  <line x1="45" y1="8" x2="45" y2="20" />
+                  <line x1="50" y1="8" x2="50" y2="20" />
+                  <line x1="55" y1="8" x2="55" y2="20" />
+                  <line x1="60" y1="8" x2="60" y2="20" />
+                  <line x1="65" y1="8" x2="65" y2="20" />
+                  <line x1="70" y1="8" x2="70" y2="20" />
+                  <line x1="75" y1="8" x2="75" y2="20" />
+                  <line x1="80" y1="8" x2="80" y2="20" />
+                  <line x1="85" y1="8" x2="85" y2="20" />
+                  <line x1="90" y1="8" x2="90" y2="20" />
+                  <line x1="95" y1="8" x2="95" y2="20" />
+                  <line x1="100" y1="8" x2="100" y2="20" />
+                </g>
+
+                <!-- Tapered Glossy Dark Navy Squeeze Tube Body -->
+                <path d="M14 22 L106 22 C104 62, 92 142, 87 192 L33 192 C28 142, 16 62, 14 22 Z" fill="url(#tubeNavyGrad)" />
+
+                <!-- Specular Gloss Highlight -->
+                <path d="M31 24 L48 24 C47 70, 44 138, 43 190 L34 190 C33 138, 32 70, 31 24 Z" fill="url(#specularStrip)" />
+
+                <!-- Vertical White 'rhode' Wordmark -->
+                <text x="66" y="88"
+                  transform="rotate(90 66 88)"
+                  text-anchor="middle"
+                  fill="#F7F8FA"
+                  font-family="Plus Jakarta Sans, Inter, sans-serif"
+                  font-weight="800"
+                  font-size="28"
+                  letter-spacing="-1.2">rhode</text>
+
+                <!-- Vertical Product Label -->
+                <text x="48" y="108"
+                  transform="rotate(90 48 108)"
+                  text-anchor="middle"
+                  fill="rgba(240, 244, 252, 0.9)"
+                  font-family="Inter, sans-serif"
+                  font-weight="500"
+                  font-size="5.6"
+                  letter-spacing="0.5">PEPTIDE LIP BOOST</text>
+                <text x="40" y="114"
+                  transform="rotate(90 40 114)"
+                  text-anchor="middle"
+                  fill="rgba(220, 230, 248, 0.72)"
+                  font-family="Inter, sans-serif"
+                  font-weight="400"
+                  font-size="4.4"
+                  letter-spacing="0.35">15 mL / 0.5 fl oz</text>
+
+                <!-- Cap Seam -->
+                <line x1="33" y1="192" x2="87" y2="192" stroke="#060C19" stroke-width="2" />
+
+                <!-- Rounded Dark Navy Cap -->
+                <path d="M33 193 L87 193 L86 248 C85 270, 74 282, 60 282 C46 282, 35 270, 34 248 Z" fill="url(#capNavyGrad)" />
+                <path d="M40 196 L51 196 L50 250 C50 264, 46 271, 43 272 C40 267, 39 258, 40 248 Z" fill="url(#specularStrip)" opacity="0.85" />
+              </svg>
+            </div>
+          </span>
+
+          <span class="embossed-letter">d</span>
+          <span class="embossed-letter">e</span>
+        </div>
+
+        <!-- Subtle Stage 3 Footer Indicator -->
+        <div class="mt-3 text-[9.5px] font-medium uppercase tracking-[0.24em] text-[#7a8499]">
+          STAGE 3: INSIDE THE BOOTH
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Floating Drag & Insertion Silver Coin Ghost -->
+  <div id="drag-coin-ghost" class="rhode-coin">
+    <div class="rhode-coin-inner">rhode</div>
+  </div>
+
+  <!-- =======================================================================
+       FINISHED 4-FRAME RHODE DARK NAVY PHOTO STRIP MODAL
+       ======================================================================= -->
+  <div id="strip-result-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4 sm:p-6">
+    <div class="absolute inset-0 bg-[#1A2E5A]/45 backdrop-blur-md"></div>
+
+    <div class="relative z-10 w-full max-w-2xl max-h-[92vh] overflow-y-auto subtle-scroll bg-[#F7F7F5] border border-[#E2E2DE] rounded-[28px] shadow-[0_30px_90px_rgba(20,36,73,0.28)] p-6 sm:p-8 text-[#1A2E5A]">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <span class="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#64728C]">rhode photobooth</span>
+          <h2 class="font-rhode font-bold text-2xl tracking-tight text-[#1A2E5A]">Your Dark Navy Strip</h2>
+        </div>
+        <button id="close-strip-modal-btn" class="w-9 h-9 rounded-full bg-[#1A2E5A]/8 hover:bg-[#1A2E5A]/15 flex items-center justify-center text-[#1A2E5A] transition-colors" aria-label="Close">
+          ✕
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+        <!-- Rendered High-Resolution 4-Frame Strip -->
+        <div class="sm:col-span-6 flex justify-center">
+          <div class="p-3.5 rounded-2xl bg-[#ECECE7] border border-[#DFDFDA] shadow-inner">
+            <canvas id="strip-canvas" width="360" height="960" class="w-[185px] sm:w-[210px] h-auto rounded-lg shadow-2xl"></canvas>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="sm:col-span-6 flex flex-col gap-3">
+          <p id="strip-shade-meta" class="text-xs text-[#54627D] leading-relaxed mb-2">
+            Dispensed with <span class="text-[#1A2E5A] font-semibold">peptide lip boost — birthday navy</span>.
+          </p>
+
+          <button id="download-strip-btn"
+            class="w-full py-3.5 px-5 rounded-full bg-[#1A2E5A] hover:bg-[#142449] text-white text-xs font-semibold uppercase tracking-[0.18em] shadow-md transition-all">
+            DOWNLOAD PNG
+          </button>
+
+          <button id="retake-strip-btn"
+            class="w-full py-3 px-5 rounded-full bg-white hover:bg-[#F0F0EC] border border-[#D8D8D2] text-[#1A2E5A] text-xs font-semibold uppercase tracking-[0.18em] transition-all">
+            RETAKE
+          </button>
+
+          <button id="insert-another-coin-btn"
+            class="w-full py-3 px-5 rounded-full bg-transparent hover:bg-[#1A2E5A]/6 border border-transparent text-[#64728C] hover:text-[#1A2E5A] text-xs font-medium uppercase tracking-[0.18em] transition-all">
+            INSERT ANOTHER COIN
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Non-Blocking Minimalist Toast -->
+  <div id="toast-msg"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] px-5 py-2.5 rounded-full bg-[#1A2E5A] text-[10.5px] font-medium uppercase tracking-[0.18em] text-white shadow-xl opacity-0 pointer-events-none transition-all duration-300">
+    Dispensed
+  </div>
+
+  <!-- WebGL Fallback Notice -->
+  <div id="webgl-error" class="hidden fixed inset-0 z-50 bg-[#F7F7F5] flex items-center justify-center p-8 text-center">
+    <div class="max-w-md">
+      <h2 class="font-rhode text-2xl font-bold text-[#1A2E5A] mb-2">WebGL Unavailable</h2>
+      <p class="text-sm text-[#5c6474]">Your browser could not initialize the 3D view. Please enable hardware acceleration or try a modern browser.</p>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * RHODE DARK NAVY 3D PHOTOBOOTH PORTAL
+     * ============================================================================
+     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#1A2E5A / #1B3160) 3D booth
+     *   with low envMapIntensity (0.35) so reflections never wash out the navy hue,
+     *   flat square top fascia, rounded vertical corners, deep navy pleated curtain
+     *   (#142449), crisp white 'rhode' logos, and clean white interior visible in Stage 2.
+     * - Stage 3: Clean matte white interior wall (#F5F5F2), no right portal,
+     *   exact-height-matched 4 coin slots + debossed menu panel, full pointer-based
+     *   draggable brushed-silver 'rhode' coin with slot hover glow & tilt,
+     *   uniform-sized centered dark navy embossed 'rhode' logo with recessed 'o' chute,
+     *   glossy Dark Navy Peptide Lip Boost pop-out, and unlocked LED mirror camera.
+     */
+
+    (function () {
+      'use strict';
+
+      // -------------------------------------------------------------------------
+      // Global State
+      // -------------------------------------------------------------------------
+      const state = {
+        targetRotY: 0,
+        currentRotY: 0,
+        targetScroll: 0,
+        currentScroll: 0,
+        currentCurtainOpen: 0,
+
+        // Stage 1/2 Pointer State
+        isOrbitDragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+        lastPointerX: 0,
+        lastPointerY: 0,
+        touchAxis: null,
+
+        // Stage 3 Interactive State
+        inStage3: false,
+        coinBusy: false,
+        isCoinDragging: false,
+        hoveredSlotBtn: null,
+        cameraUnlocked: false,
+        lipBoostPopped: false,
+        selectedShade: 'peptide lip boost — birthday navy',
+
+        // Camera & Capture State
+        mediaStream: null,
+        webcamReady: false,
+        studioMode: false,
+        isCapturing: false,
+        capturedFrames: [],
+      };
+
+      const BOOTH = {
+        W: 2.34,
+        H: 2.15,
+        D: 1.25,
+        R: 0.145,
+        wallT: 0.10,
+        capH: 0.135,
+        baseH: 0.032,
+        doorW: 0.72,
+        doorH: 1.74,
+        doorR: 0.085,
+        doorX: 0.02,
+      };
+
+      // Three.js Globals
+      let renderer, scene, camera, boothGroup;
+      let curtainMesh, curtainHandleGroup, curtainGeometry, curtainBaseData;
+      let interiorLight, ledRingMaterial;
+      let clock;
+
+      // DOM References
+      const canvasContainer = document.getElementById('canvas-container');
+      const canvasEl = document.getElementById('webgl-canvas');
+      const stage12Hud = document.getElementById('stage12-hud');
+      const stageProgressFill = document.getElementById('stage-progress-fill');
+      const stageProgressLabel = document.getElementById('stage-progress-label');
+      const interiorStage = document.getElementById('interior-stage');
+
+      const draggableCoin = document.getElementById('draggable-coin');
+      const dragCoinGhost = document.getElementById('drag-coin-ghost');
+      const coinTrayLabel = document.getElementById('coin-tray-label');
+      const coinSlotBtns = Array.from(document.querySelectorAll('.coin-slot-btn'));
+      const menuRowBtns = Array.from(document.querySelectorAll('.menu-row-btn'));
+
+      const oChuteHole = document.getElementById('o-chute-hole');
+      const lipBoostWrapper = document.getElementById('lip-boost-wrapper');
+      const popSparkle = document.getElementById('pop-sparkle');
+
+      const ledMirrorRing = document.getElementById('led-mirror-ring');
+      const mirrorLockedUi = document.getElementById('mirror-locked-ui');
+      const mirrorUnlockedUi = document.getElementById('mirror-unlocked-ui');
+      const cameraLedDot = document.getElementById('camera-led-dot');
+      const webcamVideo = document.getElementById('webcam-video');
+      const mirrorAmbientBg = document.getElementById('mirror-ambient-bg');
+      const studioBadgeMirror = document.getElementById('studio-badge-mirror');
+      const enableCameraBtn = document.getElementById('enable-camera-btn');
+      const studioModeBtn = document.getElementById('studio-mode-btn');
+      const takeStripBtn = document.getElementById('take-strip-btn');
+      const countdownOverlay = document.getElementById('countdown-overlay');
+      const countdownNumber = document.getElementById('countdown-number');
+      const countdownShotLabel = document.getElementById('countdown-shot-label');
+      const mirrorFlash = document.getElementById('mirror-flash');
+
+      const stripResultModal = document.getElementById('strip-result-modal');
+      const stripCanvas = document.getElementById('strip-canvas');
+      const stripShadeMeta = document.getElementById('strip-shade-meta');
+      const toastEl = document.getElementById('toast-msg');
+
+      // -------------------------------------------------------------------------
+      // Utilities & Procedural Web Audio
+      // -------------------------------------------------------------------------
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (e0, e1, x) => {
+        const t = clamp((x - e0) / (e1 - e0), 0, 1);
+        return t * t * (3 - 2 * t);
+      };
+
+      let toastTimer = null;
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.remove('opacity-0', 'translate-y-2');
+        toastEl.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastEl.classList.add('opacity-0', 'translate-y-2');
+          toastEl.classList.remove('opacity-100', 'translate-y-0');
+        }, 2300);
+      }
+
+      let audioCtx = null;
+      function playSound(type) {
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          if (!audioCtx) audioCtx = new AC();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+
+          const now = audioCtx.currentTime;
+          if (type === 'coin') {
+            [1920, 2780, 3420].forEach((freq, idx) => {
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+              gain.gain.setValueAtTime(0.055, now + idx * 0.055);
+              gain.gain.exponentialRampToValueAtTime(0.0008, now + idx * 0.055 + 0.19);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start(now + idx * 0.055);
+              osc.stop(now + idx * 0.055 + 0.21);
+            });
+          } else if (type === 'pop') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(175, now);
+            osc.frequency.exponentialRampToValueAtTime(440, now + 0.13);
+            gain.gain.setValueAtTime(0.085, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.2);
+          } else if (type === 'shutter') {
+            const bufferSize = Math.floor(audioCtx.sampleRate * 0.075);
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+              data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.24));
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.13, now);
+            noise.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start(now);
+          }
+        } catch (e) {
+          // Audio optional
+        }
+      }
+
+      // -------------------------------------------------------------------------
+      // Procedural Textures for 3D Booth
+      // -------------------------------------------------------------------------
+      function createLogoTexture(color = '#f7f8fa', opacity = 1.0) {
+        const c = document.createElement('canvas');
+        c.width = 1024;
+        c.height = 384;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = color;
+        ctx.font = '800 220px "Plus Jakarta Sans", "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const chars = 'rhode'.split('');
+        const spacing = -11;
+        const widths = chars.map((ch) => ctx.measureText(ch).width);
+        const totalW = widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
+        let curX = (c.width - totalW) / 2;
+        chars.forEach((ch, idx) => {
+          ctx.fillText(ch, curX + widths[idx] / 2, c.height / 2);
+          curX += widths[idx] + spacing;
+        });
+        ctx.restore();
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.encoding = THREE.sRGBEncoding;
+        tex.anisotropy = 8;
+        return tex;
+      }
+
+      function createMatteNoiseTexture() {
+        const size = 256;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        const img = ctx.createImageData(size, size);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const v = 124 + Math.floor(Math.random() * 14);
+          img.data[i] = v;
+          img.data[i + 1] = v;
+          img.data[i + 2] = v;
+          img.data[i + 3] = 255;
+        }
+        ctx.putImageData(img, 0, 0);
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(6, 6);
+        return tex;
+      }
+
+      function createCurtainFabricTexture() {
+        const size = 256;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#121E36';
+        ctx.fillRect(0, 0, size, size);
+        for (let y = 0; y < size; y += 2) {
+          ctx.fillStyle = y % 4 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(0,0,0,0.055)';
+          ctx.fillRect(0, y, size, 1);
+        }
+        for (let x = 0; x < size; x += 3) {
+          ctx.fillStyle = 'rgba(255,255,255,0.012)';
+          ctx.fillRect(x, 0, 1, size);
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.encoding = THREE.sRGBEncoding;
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(4, 8);
+        return tex;
+      }
+
+      function createTouchscreenTexture() {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 340;
+        const ctx = c.getContext('2d');
+        const g = ctx.createLinearGradient(0, 0, 256, 340);
+        g.addColorStop(0, '#171c26');
+        g.addColorStop(0.5, '#090b10');
+        g.addColorStop(1, '#040507');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 256, 340);
+
+        // Crisp diagonal studio glass reflection
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(256, 0);
+        ctx.lineTo(0, 275);
+        ctx.closePath();
+        const refl = ctx.createLinearGradient(0, 0, 190, 210);
+        refl.addColorStop(0, 'rgba(255,255,255,0.22)');
+        refl.addColorStop(0.55, 'rgba(255,255,255,0.06)');
+        refl.addColorStop(1, 'rgba(255,255,255,0.0)');
+        ctx.fillStyle = refl;
+        ctx.fill();
+        ctx.restore();
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      function createStudioEnvironment(rendererRef) {
+        const pmrem = new THREE.PMREMGenerator(rendererRef);
+        pmrem.compileEquirectangularShader();
+
+        // Dark neutral studio chamber with targeted softbox strips so the flat front stays
+        // a deep velvety dark navy while the rounded vertical corners catch soft highlights
+        const envScene = new THREE.Scene();
+        envScene.background = new THREE.Color(0x1b2333);
+
+        const addPanel = (w, h, color, pos) => {
+          const m = new THREE.Mesh(
+            new THREE.PlaneGeometry(w, h),
+            new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
+          );
+          m.position.set(pos[0], pos[1], pos[2]);
+          m.lookAt(0, 1.05, 0);
+          envScene.add(m);
+        };
+
+        // Overhead studio softbox
+        addPanel(10, 6, 0xf5f7fc, [0, 8, 1.2]);
+        // Left & right vertical rim softbox strips for the rounded shoulders
+        addPanel(4.5, 11, 0xe8eefc, [-7.5, 2.2, 2.2]);
+        addPanel(4.5, 11, 0xe8eefc, [7.5, 2.2, 2.2]);
+        // Subtle back fill
+        addPanel(10, 7, 0x9fb0cf, [0, 3.5, -8.5]);
+
+        const rt = pmrem.fromScene(envScene, 0.04);
+        pmrem.dispose();
+        return rt.texture;
+      }
+
+      // -------------------------------------------------------------------------
+      // 2D Extrusion Shapes
+      // -------------------------------------------------------------------------
+      function makeRoundedRectShape(w, h, r) {
+        const s = new THREE.Shape();
+        const x = -w / 2, y = -h / 2;
+        s.moveTo(x + r, y);
+        s.lineTo(x + w - r, y);
+        s.quadraticCurveTo(x + w, y, x + w, y + r);
+        s.lineTo(x + w, y + h - r);
+        s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        s.lineTo(x + r, y + h);
+        s.quadraticCurveTo(x, y + h, x, y + h - r);
+        s.lineTo(x, y + r);
+        s.quadraticCurveTo(x, y, x + r, y);
+        return s;
+      }
+
+      function makeBoothShellShape(W, D, R, t) {
+        const hw = W / 2, hd = D / 2;
+        const shape = new THREE.Shape();
+        shape.moveTo(hw - R, -hd);
+        shape.absarc(hw - R, -hd + R, R, -Math.PI / 2, 0, false);
+        shape.lineTo(hw, hd - R);
+        shape.absarc(hw - R, hd - R, R, 0, Math.PI / 2, false);
+        shape.lineTo(-hw + R, hd);
+        shape.absarc(-hw + R, hd - R, R, Math.PI / 2, Math.PI, false);
+        shape.lineTo(-hw, -hd + R);
+        shape.absarc(-hw + R, -hd + R, R, Math.PI, Math.PI * 1.5, false);
+
+        const ihw = hw - t, ihd = hd - t;
+        const ir = Math.max(0.03, R - t * 0.7);
+        shape.lineTo(-hw + R, -ihd);
+        shape.lineTo(-ihw, -ihd);
+        shape.lineTo(-ihw, ihd - ir);
+        shape.absarc(-ihw + ir, ihd - ir, ir, Math.PI, Math.PI / 2, true);
+        shape.lineTo(ihw - ir, ihd);
+        shape.absarc(ihw - ir, ihd - ir, ir, Math.PI / 2, 0, true);
+        shape.lineTo(ihw, -ihd);
+        shape.lineTo(hw - R, -ihd);
+        shape.closePath();
+        return shape;
+      }
+
+      function makeFrontFaceplateShape(plateW, bodyH, doorX, doorW, doorH, doorR) {
+        const shape = new THREE.Shape();
+        const hw = plateW / 2;
+        shape.moveTo(-hw, 0);
+        shape.lineTo(hw, 0);
+        shape.lineTo(hw, bodyH);
+        shape.lineTo(-hw, bodyH);
+        shape.closePath();
+
+        const dLeft = doorX - doorW / 2;
+        const dRight = doorX + doorW / 2;
+        const dBottom = 0.008;
+        const dTop = dBottom + doorH;
+
+        const hole = new THREE.Path();
+        hole.moveTo(dLeft, dBottom);
+        hole.lineTo(dLeft, dTop - doorR);
+        hole.quadraticCurveTo(dLeft, dTop, dLeft + doorR, dTop);
+        hole.lineTo(dRight - doorR, dTop);
+        hole.quadraticCurveTo(dRight, dTop, dRight, dTop - doorR);
+        hole.lineTo(dRight, dBottom);
+        hole.closePath();
+        shape.holes.push(hole);
+        return shape;
+      }
+
+      function makeOvalRingShape(outerW, outerH, thickness) {
+        const outerR = outerW * 0.34;
+        const outer = makeRoundedRectShape(outerW, outerH, outerR);
+        const innerW = outerW - thickness * 2;
+        const innerH = outerH - thickness * 2;
+        const innerR = Math.max(0.02, outerR - thickness * 0.85);
+        const x = -innerW / 2, y = -innerH / 2;
+
+        const hole = new THREE.Path();
+        hole.moveTo(x + innerR, y);
+        hole.lineTo(x + innerW - innerR, y);
+        hole.quadraticCurveTo(x + innerW, y, x + innerW, y + innerR);
+        hole.lineTo(x + innerW, y + innerH - innerR);
+        hole.quadraticCurveTo(x + innerW, y + innerH, x + innerW - innerR, y + innerH);
+        hole.lineTo(x + innerR, y + innerH);
+        hole.quadraticCurveTo(x, y + innerH, x, y + innerH - innerR);
+        hole.lineTo(x, y + innerR);
+        hole.quadraticCurveTo(x, y, x + innerR, y);
+        outer.holes.push(hole);
+        return outer;
+      }
+
+      // -------------------------------------------------------------------------
+      // Build 100% Rich Dark Navy Blue 3D Photobooth + White Interior (Stage 2)
+      // -------------------------------------------------------------------------
+      function buildPhotoboothModel() {
+        const group = new THREE.Group();
+        const { W, H, D, R, wallT, capH, baseH, doorW, doorH, doorR, doorX } = BOOTH;
+        const bodyH = H - capH - baseH;
+        const seamGap = 0.006;
+        const noiseTex = createMatteNoiseTexture();
+        const fabricTex = createCurtainFabricTexture();
+
+        // Velvety Matte-Satin Dark Navy Blue Exterior matching the studio reference
+        const navyExteriorMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#182744').convertSRGBToLinear(),
+          roughness: 0.54,
+          metalness: 0.10,
+          roughnessMap: noiseTex,
+          bumpMap: noiseTex,
+          bumpScale: 0.0006,
+          envMapIntensity: 0.42,
+        });
+
+        // Subtle deeper navy recessed seam & base plinth material
+        const seamMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#0C1528').convertSRGBToLinear(),
+          roughness: 0.85,
+          metalness: 0.05,
+          envMapIntensity: 0.12,
+        });
+
+        // Slightly Deeper Dark Navy Pleated Accordion Curtain
+        const curtainMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(0xffffff),
+          map: fabricTex,
+          roughness: 0.82,
+          metalness: 0.04,
+          side: THREE.DoubleSide,
+          envMapIntensity: 0.22,
+        });
+
+        // Clean White Interior Wall Material (Visible when curtain opens in Stage 2)
+        const whiteInteriorMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(0xF5F5F2),
+          roughness: 0.72,
+          metalness: 0.02,
+          envMapIntensity: 0.3,
+        });
+
+        // Brushed Silver Hardware (Handle & Threshold)
+        const silverMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(0xe2e6ee),
+          roughness: 0.2,
+          metalness: 0.9,
+          envMapIntensity: 1.2,
+        });
+
+        const glossyBlackMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(0x07090d),
+          roughness: 0.08,
+          metalness: 0.2,
+          envMapIntensity: 1.4,
+        });
+
+        // 1. Subtle Dark Navy Base Plinth
+        const baseGeo = new THREE.ExtrudeGeometry(
+          makeRoundedRectShape(W - 0.03, D - 0.03, R - 0.015),
+          { depth: baseH, bevelEnabled: false, curveSegments: 24 }
+        );
+        baseGeo.rotateX(-Math.PI / 2);
+        const baseMesh = new THREE.Mesh(baseGeo, seamMat);
+        baseMesh.castShadow = true;
+        baseMesh.receiveShadow = true;
+        group.add(baseMesh);
+
+        // 2. Main Perimeter Shell (Rich Dark Navy Blue)
+        const shellGeo = new THREE.ExtrudeGeometry(
+          makeBoothShellShape(W, D, R, wallT),
+          { depth: bodyH - seamGap, bevelEnabled: false, curveSegments: 28 }
+        );
+        shellGeo.rotateX(-Math.PI / 2);
+        const shellMesh = new THREE.Mesh(shellGeo, navyExteriorMat);
+        shellMesh.position.y = baseH;
+        shellMesh.castShadow = true;
+        shellMesh.receiveShadow = true;
+        group.add(shellMesh);
+
+        // 3. Front Faceplate with Rounded-Top Doorway (Rich Dark Navy Blue)
+        const frontGeo = new THREE.ExtrudeGeometry(
+          makeFrontFaceplateShape(W - 2 * R, bodyH - seamGap, doorX, doorW, doorH, doorR),
+          { depth: wallT, bevelEnabled: false, curveSegments: 24 }
+        );
+        const frontMesh = new THREE.Mesh(frontGeo, navyExteriorMat);
+        frontMesh.position.set(0, baseH, D / 2 - wallT);
+        frontMesh.castShadow = true;
+        frontMesh.receiveShadow = true;
+        group.add(frontMesh);
+
+        // 4. Horizontal Cap Seam
+        const topSeamGeo = new THREE.ExtrudeGeometry(
+          makeRoundedRectShape(W - 0.008, D - 0.008, R - 0.004),
+          { depth: seamGap + 0.002, bevelEnabled: false, curveSegments: 24 }
+        );
+        topSeamGeo.rotateX(-Math.PI / 2);
+        const topSeamMesh = new THREE.Mesh(topSeamGeo, seamMat);
+        topSeamMesh.position.y = baseH + bodyH - seamGap - 0.001;
+        group.add(topSeamMesh);
+
+        // 5. Completely Flat, Level Square Top Fascia Cap (Rich Dark Navy Blue)
+        const capGeo = new THREE.ExtrudeGeometry(
+          makeRoundedRectShape(W, D, R),
+          { depth: capH, bevelEnabled: true, bevelThickness: 0.005, bevelSize: 0.005, bevelSegments: 3, curveSegments: 28 }
+        );
+        capGeo.rotateX(-Math.PI / 2);
+        const capMesh = new THREE.Mesh(capGeo, navyExteriorMat);
+        capMesh.position.y = baseH + bodyH;
+        capMesh.castShadow = true;
+        capMesh.receiveShadow = true;
+        group.add(capMesh);
+
+        // 6. Subtle Architectural Vertical Panel Seams
+        const addVerticalSeam = (x, z, rotY = 0) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(0.003, bodyH - seamGap, 0.003), seamMat);
+          m.position.set(x, baseH + (bodyH - seamGap) / 2, z);
+          m.rotation.y = rotY;
+          group.add(m);
+        };
+        addVerticalSeam(-W / 2 + R + 0.02, D / 2 + 0.0005);
+        addVerticalSeam(doorX + doorW / 2 + 0.14, D / 2 + 0.0005);
+        addVerticalSeam(-W / 2 + R + 0.02, -D / 2 - 0.0005);
+        addVerticalSeam(W / 2 - R - 0.02, -D / 2 - 0.0005);
+        addVerticalSeam(-W / 2 - 0.0005, D / 2 - R - 0.02, Math.PI / 2);
+        addVerticalSeam(-W / 2 - 0.0005, -D / 2 + R + 0.02, Math.PI / 2);
+        addVerticalSeam(W / 2 + 0.0005, D / 2 - R - 0.02, Math.PI / 2);
+        addVerticalSeam(W / 2 + 0.0005, -D / 2 + R + 0.02, Math.PI / 2);
+
+        // 7. Brushed Silver Door Threshold
+        const thresholdMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(doorW + 0.008, 0.015, wallT + 0.01),
+          silverMat
+        );
+        thresholdMesh.position.set(doorX, baseH + 0.008, D / 2 - wallT / 2 + 0.003);
+        group.add(thresholdMesh);
+
+        // 8. Front-Right Panel: Recessed Glossy Black Touchscreen
+        const panelCenterX = (doorX + doorW / 2 + 0.14 + (W / 2 - R)) / 2 + 0.05;
+        const screenW = 0.155, screenH = 0.215, screenY = 1.15;
+
+        const bezelMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(screenW + 0.014, screenH + 0.014, 0.008),
+          seamMat
+        );
+        bezelMesh.position.set(panelCenterX, screenY, D / 2 - 0.001);
+        group.add(bezelMesh);
+
+        const screenMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(screenW, screenH),
+          new THREE.MeshStandardMaterial({
+            map: createTouchscreenTexture(),
+            roughness: 0.07,
+            metalness: 0.15,
+            envMapIntensity: 1.6,
+          })
+        );
+        screenMesh.position.set(panelCenterX, screenY, D / 2 + 0.0035);
+        group.add(screenMesh);
+
+        // 9. Front-Right Panel: Matching Dark Navy Photo-Dispensing Tray
+        const trayY = 0.915, trayW = 0.175, trayD = 0.048, trayH = 0.036;
+        const trayGroup = new THREE.Group();
+        trayGroup.position.set(panelCenterX, trayY, D / 2);
+
+        const trayBottom = new THREE.Mesh(new THREE.BoxGeometry(trayW, 0.012, trayD), navyExteriorMat);
+        trayBottom.position.set(0, -trayH / 2 + 0.006, trayD / 2);
+        trayGroup.add(trayBottom);
+
+        const trayFront = new THREE.Mesh(new THREE.BoxGeometry(trayW, trayH * 0.72, 0.01), navyExteriorMat);
+        trayFront.position.set(0, -0.004, trayD - 0.005);
+        trayGroup.add(trayFront);
+
+        [-1, 1].forEach((side) => {
+          const s = new THREE.Mesh(new THREE.BoxGeometry(0.01, trayH * 0.72, trayD), navyExteriorMat);
+          s.position.set(side * (trayW / 2 - 0.005), -0.004, trayD / 2);
+          trayGroup.add(s);
+        });
+
+        const slotMesh = new THREE.Mesh(new THREE.BoxGeometry(trayW - 0.03, 0.014, 0.008), glossyBlackMat);
+        slotMesh.position.set(0, 0.016, 0.001);
+        trayGroup.add(slotMesh);
+        group.add(trayGroup);
+
+        // 10. Crisp White Lowercase 'rhode' Logos (Front-Right & Left Side)
+        const whiteLogoMat = new THREE.MeshBasicMaterial({
+          map: createLogoTexture('#f5f7fa', 0.96),
+          transparent: true,
+          depthWrite: false,
+        });
+
+        const frontLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.41, 0.154), whiteLogoMat);
+        frontLogo.position.set(panelCenterX - 0.01, 0.28, D / 2 + 0.002);
+        group.add(frontLogo);
+
+        const leftLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.76, 0.285), whiteLogoMat);
+        leftLogo.position.set(-W / 2 - 0.002, 1.02, 0);
+        leftLogo.rotation.y = -Math.PI / 2;
+        group.add(leftLogo);
+
+        // Soft recessed top-of-doorway shadow gradient above the curtain
+        const archShadowCanvas = document.createElement('canvas');
+        archShadowCanvas.width = 64;
+        archShadowCanvas.height = 128;
+        const asCtx = archShadowCanvas.getContext('2d');
+        const asGrad = asCtx.createLinearGradient(0, 0, 0, 128);
+        asGrad.addColorStop(0, 'rgba(6, 11, 22, 0.58)');
+        asGrad.addColorStop(0.45, 'rgba(6, 11, 22, 0.16)');
+        asGrad.addColorStop(1, 'rgba(6, 11, 22, 0)');
+        asCtx.fillStyle = asGrad;
+        asCtx.fillRect(0, 0, 64, 128);
+        const archShadowTex = new THREE.CanvasTexture(archShadowCanvas);
+        const archShadowMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(doorW, 0.32),
+          new THREE.MeshBasicMaterial({ map: archShadowTex, transparent: true, depthWrite: false })
+        );
+        archShadowMesh.position.set(doorX, baseH + doorH - 0.16, D / 2 - wallT * 0.22);
+        group.add(archShadowMesh);
+
+        // 11. Clean White Interior Chamber (Visible when curtain opens in Stage 2)
+        const interiorGroup = new THREE.Group();
+        const innerW = W - wallT * 2;
+        const innerH = bodyH;
+        const innerD = D - wallT * 2;
+        const backWallZ = -D / 2 + wallT + 0.01;
+
+        const backWallMesh = new THREE.Mesh(new THREE.PlaneGeometry(innerW, innerH), whiteInteriorMat);
+        backWallMesh.position.set(0, baseH + innerH / 2, backWallZ);
+        interiorGroup.add(backWallMesh);
+
+        const sideWallGeo = new THREE.PlaneGeometry(innerD, innerH);
+        const leftWallMesh = new THREE.Mesh(sideWallGeo, whiteInteriorMat);
+        leftWallMesh.rotation.y = Math.PI / 2;
+        leftWallMesh.position.set(-W / 2 + wallT + 0.01, baseH + innerH / 2, 0);
+        interiorGroup.add(leftWallMesh);
+
+        const rightWallMesh = new THREE.Mesh(sideWallGeo, whiteInteriorMat);
+        rightWallMesh.rotation.y = -Math.PI / 2;
+        rightWallMesh.position.set(W / 2 - wallT - 0.01, baseH + innerH / 2, 0);
+        interiorGroup.add(rightWallMesh);
+
+        // White floor & ceiling
+        const floorGeo = new THREE.PlaneGeometry(innerW, innerD);
+        const floorMesh = new THREE.Mesh(floorGeo, whiteInteriorMat);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.position.set(0, baseH + 0.012, 0);
+        interiorGroup.add(floorMesh);
+
+        const ceilingMesh = new THREE.Mesh(floorGeo, whiteInteriorMat);
+        ceilingMesh.rotation.x = Math.PI / 2;
+        ceilingMesh.position.set(0, baseH + bodyH - 0.012, 0);
+        interiorGroup.add(ceilingMesh);
+
+        // Glowing Warm-White Vertical Rounded-Rectangle LED Mirror Ring on White Back Wall
+        const ovalRingGeo = new THREE.ExtrudeGeometry(
+          makeOvalRingShape(0.36, 0.72, 0.026),
+          { depth: 0.018, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 3, curveSegments: 32 }
+        );
+        ledRingMaterial = new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#FFF8EC'),
+          emissive: new THREE.Color('#FFE5BD'),
+          emissiveIntensity: 1.5,
+          roughness: 0.2,
+          metalness: 0.0,
+        });
+        const ledRingMesh = new THREE.Mesh(ovalRingGeo, ledRingMaterial);
+        ledRingMesh.position.set(doorX, 1.29, backWallZ + 0.004);
+        interiorGroup.add(ledRingMesh);
+
+        // Dark Navy 'rhode' lettering directly below mirror on white interior wall
+        const navyInteriorLogoMat = new THREE.MeshBasicMaterial({
+          map: createLogoTexture('#1A2E5A', 1.0),
+          transparent: true,
+          depthWrite: false,
+        });
+        const interiorLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.21), navyInteriorLogoMat);
+        interiorLogo.position.set(doorX, 0.77, backWallZ + 0.006);
+        interiorGroup.add(interiorLogo);
+
+        interiorLight = new THREE.PointLight(0xfff1dc, 1.6, 3.4, 1.6);
+        interiorLight.position.set(doorX, 1.32, -0.05);
+        interiorGroup.add(interiorLight);
+
+        group.add(interiorGroup);
+
+        // 12. Deep Dark Navy Pleated Accordion Curtain + Brushed Silver Handle
+        buildAccordionCurtain(group, curtainMat, silverMat);
+
+        return group;
+      }
+
+      function buildAccordionCurtain(parentGroup, curtainMat, silverMat) {
+        const { baseH, D, wallT, doorW, doorH, doorX } = BOOTH;
+        const curtainH = doorH - 0.012;
+        const curtainZ = D / 2 - wallT * 0.56;
+
+        curtainGeometry = new THREE.PlaneGeometry(doorW, curtainH, 128, 16);
+        const pos = curtainGeometry.attributes.position;
+        curtainBaseData = new Float32Array(pos.count * 2);
+        for (let i = 0; i < pos.count; i++) {
+          curtainBaseData[i * 2] = (pos.getX(i) + doorW / 2) / doorW;
+          curtainBaseData[i * 2 + 1] = (pos.getY(i) + curtainH / 2) / curtainH;
+        }
+
+        curtainMesh = new THREE.Mesh(curtainGeometry, curtainMat);
+        curtainMesh.position.set(doorX, baseH + 0.016 + curtainH / 2, curtainZ);
+        curtainMesh.castShadow = true;
+        curtainMesh.receiveShadow = true;
+        parentGroup.add(curtainMesh);
+
+        curtainHandleGroup = new THREE.Group();
+        const handleH = 0.24, r = 0.0085, d = 0.036;
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(r, r, handleH, 16), silverMat);
+        bar.position.z = d;
+        curtainHandleGroup.add(bar);
+
+        [-handleH / 2, handleH / 2].forEach((yOff) => {
+          const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 12), silverMat);
+          cap.position.set(0, yOff, d);
+          curtainHandleGroup.add(cap);
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.82, r * 0.82, d, 12), silverMat);
+          post.rotation.x = Math.PI / 2;
+          post.position.set(0, yOff, d / 2);
+          curtainHandleGroup.add(post);
+        });
+
+        curtainHandleGroup.position.set(doorX + doorW / 2 - 0.012, baseH + 0.96, curtainZ + 0.025);
+        parentGroup.add(curtainHandleGroup);
+
+        updateCurtainGeometry(0);
+      }
+
+      function updateCurtainGeometry(openFactor) {
+        if (!curtainGeometry || !curtainBaseData) return;
+        const { doorW, doorX } = BOOTH;
+        const pos = curtainGeometry.attributes.position;
+        const numPleats = 6.0;
+        const compressedW = lerp(doorW, 0.14, openFactor);
+        const pleatAmp = lerp(0.046, 0.056, openFactor);
+        const leftEdge = -doorW / 2;
+
+        for (let i = 0; i < pos.count; i++) {
+          const u = curtainBaseData[i * 2];
+          pos.setX(i, leftEdge + u * compressedW);
+          pos.setZ(i, Math.sin(u * Math.PI * 2 * numPleats) * pleatAmp);
+        }
+        pos.needsUpdate = true;
+        curtainGeometry.computeVertexNormals();
+
+        const rightEdgeZ = Math.sin(Math.PI * 2 * numPleats) * pleatAmp;
+        curtainHandleGroup.position.x = doorX + leftEdge + compressedW - 0.012;
+        curtainHandleGroup.position.z = curtainMesh.position.z + rightEdgeZ + 0.012;
+      }
+
+      // -------------------------------------------------------------------------
+      // Three.js Initialization & Render Loop
+      // -------------------------------------------------------------------------
+      function getHeroCameraDistance() {
+        const aspect = window.innerWidth / window.innerHeight;
+        if (aspect < 0.72) return 7.4;
+        if (aspect < 1.05) return 6.2;
+        return 5.15;
+      }
+
+      function initThreeScene() {
+        try {
+          renderer = new THREE.WebGLRenderer({
+            canvas: canvasEl,
+            antialias: true,
+            alpha: true,
+            powerPreference: 'high-performance',
+          });
+        } catch (err) {
+          document.getElementById('webgl-error').classList.remove('hidden');
+          return false;
+        }
+
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.02;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        scene = new THREE.Scene();
+        scene.environment = createStudioEnvironment(renderer);
+
+        // Low-distortion 32° architectural studio lens for crisp flat top/bottom lines
+        camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.08, 40);
+        camera.position.set(0, 1.075, getHeroCameraDistance());
+
+        // Calibrated 3-Point Studio Lighting for velvety Dark Navy Blue + rounded corner sheen
+        scene.add(new THREE.HemisphereLight(0xf0f4ff, 0x263248, 0.48));
+
+        const keyLight = new THREE.DirectionalLight(0xfffdf9, 0.92);
+        keyLight.position.set(3.2, 5.8, 5.8);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(2048, 2048);
+        keyLight.shadow.camera.near = 1;
+        keyLight.shadow.camera.far = 16;
+        keyLight.shadow.camera.left = -3;
+        keyLight.shadow.camera.right = 3;
+        keyLight.shadow.camera.top = 3;
+        keyLight.shadow.camera.bottom = -3;
+        keyLight.shadow.bias = -0.0005;
+        keyLight.shadow.radius = 5;
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0xd4e2ff, 0.36);
+        fillLight.position.set(-4.8, 2.8, 4.2);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xeef4ff, 0.42);
+        rimLight.position.set(0, 4.2, -5.5);
+        scene.add(rimLight);
+
+        // Grounded Soft Contact Shadow Plane
+        const shadowPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(18, 18),
+          new THREE.ShadowMaterial({ opacity: 0.22 })
+        );
+        shadowPlane.rotation.x = -Math.PI / 2;
+        shadowPlane.receiveShadow = true;
+        scene.add(shadowPlane);
+
+        boothGroup = buildPhotoboothModel();
+        scene.add(boothGroup);
+
+        clock = new THREE.Clock();
+        return true;
+      }
+
+      let lastCurtainVal = -1;
+
+      function animate() {
+        requestAnimationFrame(animate);
+        if (!renderer || !scene || !camera) return;
+
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const damp = 1 - Math.exp(-7.5 * dt);
+
+        state.currentScroll = lerp(state.currentScroll, state.targetScroll, damp);
+        const s = state.currentScroll;
+
+        const stage2 = smoothstep(0.34, 0.74, s);
+        const stage3 = smoothstep(0.74, 1.0, s);
+
+        if (stage2 > 0.02) {
+          const nearestFront = Math.round(state.targetRotY / (Math.PI * 2)) * (Math.PI * 2);
+          state.targetRotY = lerp(state.targetRotY, nearestFront, stage2 * 0.14);
+        }
+
+        state.currentRotY = lerp(state.currentRotY, state.targetRotY, damp);
+        boothGroup.rotation.y = state.currentRotY;
+
+        const desiredCurtain = smoothstep(0.36, 0.68, s) * 0.9;
+        state.currentCurtainOpen = lerp(state.currentCurtainOpen, desiredCurtain, damp);
+        if (Math.abs(state.currentCurtainOpen - lastCurtainVal) > 0.0008) {
+          updateCurtainGeometry(state.currentCurtainOpen);
+          lastCurtainVal = state.currentCurtainOpen;
+        }
+
+        if (interiorLight && ledRingMaterial) {
+          interiorLight.intensity = 0.8 + state.currentCurtainOpen * 1.5;
+          ledRingMaterial.emissiveIntensity = 1.2 + state.currentCurtainOpen * 0.9;
+        }
+
+        const heroZ = getHeroCameraDistance();
+        let camZ = lerp(heroZ, 1.75, stage2);
+        camZ = lerp(camZ, 0.42, stage3);
+        const camX = lerp(0, BOOTH.doorX, stage2);
+        const camY = lerp(1.075, 1.12, stage2);
+        const lookZ = lerp(0, -0.55, stage3);
+
+        camera.position.set(camX, camY, camZ);
+        camera.lookAt(camX, 1.075, lookZ);
+
+        syncStageUI(s);
+
+        if (s < 0.96) {
+          renderer.render(scene, camera);
+        }
+      }
+
+      function syncStageUI(s) {
+        stageProgressFill.style.width = `${Math.max(4, s * 100)}%`;
+
+        if (s < 0.35) {
+          stageProgressLabel.textContent = 'STAGE 1: 3D INSPECTION';
+        } else if (s < 0.75) {
+          stageProgressLabel.textContent = 'STAGE 2: ENTER THE BOOTH';
+        } else {
+          stageProgressLabel.textContent = 'STAGE 3: INSIDE THE BOOTH';
+        }
+
+        const hudOpacity = 1 - smoothstep(0.62, 0.78, s);
+        stage12Hud.style.opacity = hudOpacity.toFixed(3);
+        stage12Hud.style.pointerEvents = hudOpacity < 0.15 ? 'none' : '';
+
+        const shouldEnterStage3 = s >= 0.75;
+        if (shouldEnterStage3 !== state.inStage3) {
+          state.inStage3 = shouldEnterStage3;
+          interiorStage.classList.toggle('active', shouldEnterStage3);
+          if (!shouldEnterStage3) {
+            stopWebcam();
+          }
+        }
+      }
+
+      // -------------------------------------------------------------------------
+      // Stage 1 & 2 Interactions
+      // -------------------------------------------------------------------------
+      function setupStage12Interactions() {
+        canvasContainer.addEventListener('mousedown', (e) => {
+          if (state.inStage3) return;
+          state.isOrbitDragging = true;
+          state.lastPointerX = e.clientX;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!state.isOrbitDragging || state.inStage3) return;
+          const dx = e.clientX - state.lastPointerX;
+          state.lastPointerX = e.clientX;
+          if (state.targetScroll < 0.4) {
+            state.targetRotY += dx * 0.0085;
+          }
+        });
+
+        window.addEventListener('mouseup', () => {
+          state.isOrbitDragging = false;
+        });
+
+        canvasContainer.addEventListener('touchstart', (e) => {
+          if (state.inStage3 || e.touches.length !== 1) return;
+          const t = e.touches[0];
+          state.isOrbitDragging = true;
+          state.dragStartX = state.lastPointerX = t.clientX;
+          state.dragStartY = state.lastPointerY = t.clientY;
+          state.touchAxis = null;
+        }, { passive: true });
+
+        canvasContainer.addEventListener('touchmove', (e) => {
+          if (!state.isOrbitDragging || state.inStage3 || e.touches.length !== 1) return;
+          const t = e.touches[0];
+          const dx = t.clientX - state.lastPointerX;
+          const dy = t.clientY - state.lastPointerY;
+          state.lastPointerX = t.clientX;
+          state.lastPointerY = t.clientY;
+
+          if (!state.touchAxis) {
+            const adx = Math.abs(t.clientX - state.dragStartX);
+            const ady = Math.abs(t.clientY - state.dragStartY);
+            if (adx > 6 || ady > 6) state.touchAxis = adx >= ady ? 'x' : 'y';
+          }
+
+          if (state.touchAxis === 'x' && state.targetScroll < 0.4) {
+            state.targetRotY += dx * 0.011;
+          } else if (state.touchAxis === 'y') {
+            state.targetScroll = clamp(state.targetScroll - dy * 0.0022, 0, 1);
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+          state.isOrbitDragging = false;
+          state.touchAxis = null;
+        });
+
+        window.addEventListener('wheel', (e) => {
+          if (!stripResultModal.classList.contains('hidden')) return;
+          if (state.inStage3 && e.deltaY > 0) return; // stay in stage 3 on further down-scroll
+          const delta = e.deltaY * 0.00068;
+          state.targetScroll = clamp(state.targetScroll + delta, 0, 1);
+        }, { passive: true });
+
+        document.getElementById('rotate-left-btn').addEventListener('click', () => {
+          if (state.targetScroll > 0.3) state.targetScroll = 0;
+          state.targetRotY += Math.PI / 2;
+        });
+
+        document.getElementById('rotate-right-btn').addEventListener('click', () => {
+          if (state.targetScroll > 0.3) state.targetScroll = 0;
+          state.targetRotY -= Math.PI / 2;
+        });
+
+        document.getElementById('scroll-top-cue').addEventListener('click', () => {
+          state.targetScroll = 1.0;
+        });
+
+        document.getElementById('exit-booth-btn').addEventListener('click', () => {
+          closeStripModal();
+          stopWebcam();
+          state.targetScroll = 0;
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (!stripResultModal.classList.contains('hidden')) {
+            if (e.key === 'Escape') closeStripModal();
+            return;
+          }
+          if (!state.inStage3) {
+            if (e.key === 'ArrowLeft') state.targetRotY += Math.PI / 2;
+            if (e.key === 'ArrowRight') state.targetRotY -= Math.PI / 2;
+          }
+          if (e.key === 'ArrowDown') state.targetScroll = clamp(state.targetScroll + 0.18, 0, 1);
+          if (e.key === 'ArrowUp') state.targetScroll = clamp(state.targetScroll - 0.18, 0, 1);
+        });
+
+        window.addEventListener('resize', () => {
+          if (!renderer || !camera) return;
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      }
+
+      // -------------------------------------------------------------------------
+      // Stage 3: Full Pointer-Based Draggable Silver Coin + Slot Drop / Click Fallback
+      // -------------------------------------------------------------------------
+      function findSlotUnderPoint(clientX, clientY) {
+        const hitMargin = 20;
+        for (const btn of coinSlotBtns) {
+          const r = btn.getBoundingClientRect();
+          if (
+            clientX >= r.left - hitMargin &&
+            clientX <= r.right + hitMargin &&
+            clientY >= r.top - hitMargin &&
+            clientY <= r.bottom + hitMargin
+          ) {
+            return btn;
+          }
+        }
+        return null;
+      }
+
+      function clearSlotHighlights() {
+        coinSlotBtns.forEach((b) => b.classList.remove('slot-hover-active'));
+        menuRowBtns.forEach((r) => r.classList.remove('row-highlight'));
+      }
+
+      function positionDragGhost(clientX, clientY, isOverSlot) {
+        const half = 27;
+        const x = clientX - half;
+        const y = clientY - half;
+        if (isOverSlot) {
+          dragCoinGhost.classList.add('tilted-for-slot');
+          dragCoinGhost.style.transform = `translate(${x}px, ${y}px) scale(0.94) perspective(240px) rotateY(68deg)`;
+        } else {
+          dragCoinGhost.classList.remove('tilted-for-slot');
+          dragCoinGhost.style.transform = `translate(${x}px, ${y}px) scale(1.06)`;
+        }
+      }
+
+      function setupDraggableCoin() {
+        draggableCoin.addEventListener('pointerdown', (e) => {
+          if (state.coinBusy || state.isCapturing) return;
+          e.preventDefault();
+          state.isCoinDragging = true;
+          state.hoveredSlotBtn = null;
+
+          draggableCoin.style.opacity = '0.2';
+          draggableCoin.classList.remove('idle-float');
+
+          dragCoinGhost.classList.remove('coin-inserting-anim');
+          dragCoinGhost.classList.add('active-drag');
+          positionDragGhost(e.clientX, e.clientY, false);
+
+          if (draggableCoin.setPointerCapture) {
+            try { draggableCoin.setPointerCapture(e.pointerId); } catch (_) {}
+          }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+          if (!state.isCoinDragging) return;
+          const hitSlot = findSlotUnderPoint(e.clientX, e.clientY);
+          state.hoveredSlotBtn = hitSlot;
+
+          clearSlotHighlights();
+          if (hitSlot) {
+            hitSlot.classList.add('slot-hover-active');
+            const idx = hitSlot.dataset.slot;
+            const row = menuRowBtns.find((r) => r.dataset.slot === idx);
+            if (row) row.classList.add('row-highlight');
+          }
+
+          positionDragGhost(e.clientX, e.clientY, Boolean(hitSlot));
+        });
+
+        const endCoinDrag = (e) => {
+          if (!state.isCoinDragging) return;
+          state.isCoinDragging = false;
+
+          const dropSlot = state.hoveredSlotBtn || findSlotUnderPoint(e.clientX, e.clientY);
+          clearSlotHighlights();
+          state.hoveredSlotBtn = null;
+
+          if (dropSlot) {
+            insertCoinIntoSlot(dropSlot, true);
+          } else {
+            // Smoothly return coin to tray
+            dragCoinGhost.classList.remove('active-drag', 'tilted-for-slot');
+            dragCoinGhost.style.opacity = '0';
+            draggableCoin.style.opacity = '1';
+            draggableCoin.classList.add('idle-float');
+          }
+        };
+
+        window.addEventListener('pointerup', endCoinDrag);
+        window.addEventListener('pointercancel', endCoinDrag);
+      }
+
+      function insertCoinIntoSlot(slotBtn, fromDrag = false) {
+        if (state.coinBusy || state.isCapturing) return;
+        state.coinBusy = true;
+
+        state.selectedShade = slotBtn.dataset.shade || 'peptide lip boost — birthday navy';
+        const slotRect = slotBtn.getBoundingClientRect();
+        const targetX = slotRect.left + slotRect.width / 2 - 27;
+        const targetY = slotRect.top + slotRect.height / 2 - 27;
+
+        draggableCoin.style.opacity = '0.2';
+        draggableCoin.classList.remove('idle-float');
+        slotBtn.classList.add('slot-hover-active');
+
+        if (fromDrag) {
+          // Coin is already hovering right over the slot -> slide directly in
+          dragCoinGhost.style.setProperty('--sx', `${targetX}px`);
+          dragCoinGhost.style.setProperty('--sy', `${targetY}px`);
+          dragCoinGhost.classList.remove('active-drag', 'tilted-for-slot', 'coin-inserting-anim');
+          void dragCoinGhost.offsetWidth;
+          dragCoinGhost.classList.add('coin-inserting-anim');
+          playSound('coin');
+
+          setTimeout(() => {
+            slotBtn.classList.remove('slot-hover-active');
+            dispenseLipBoostFromO();
+          }, 380);
+        } else {
+          // Click fallback: glide coin from tray to slot, then slide in
+          const trayRect = draggableCoin.getBoundingClientRect();
+          dragCoinGhost.classList.remove('coin-inserting-anim');
+          dragCoinGhost.style.transition = 'none';
+          dragCoinGhost.style.opacity = '1';
+          dragCoinGhost.style.transform = `translate(${trayRect.left}px, ${trayRect.top}px) scale(1)`;
+          void dragCoinGhost.offsetWidth;
+
+          dragCoinGhost.style.transition = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)';
+          dragCoinGhost.style.transform = `translate(${targetX}px, ${targetY}px) scale(0.94) perspective(240px) rotateY(68deg)`;
+
+          setTimeout(() => {
+            dragCoinGhost.style.transition = 'none';
+            dragCoinGhost.style.setProperty('--sx', `${targetX}px`);
+            dragCoinGhost.style.setProperty('--sy', `${targetY}px`);
+            dragCoinGhost.classList.add('coin-inserting-anim');
+            playSound('coin');
+
+            setTimeout(() => {
+              slotBtn.classList.remove('slot-hover-active');
+              dispenseLipBoostFromO();
+            }, 380);
+          }, 340);
+        }
+      }
+
+      let lipBoostVanishTimer = null;
+
+      function dispenseLipBoostFromO() {
+        playSound('pop');
+
+        clearTimeout(lipBoostVanishTimer);
+        oChuteHole.classList.add('dispensing-glow');
+
+        lipBoostWrapper.classList.remove('popped', 'vanishing');
+        void lipBoostWrapper.offsetWidth;
+        lipBoostWrapper.classList.add('popped');
+        state.lipBoostPopped = true;
+
+        popSparkle.classList.remove('hidden', 'sparkle-burst');
+        void popSparkle.offsetWidth;
+        popSparkle.classList.add('sparkle-burst');
+
+        // Pause visibly for ~1.3s after emerging (0.85s pop + 1.3s hold = 2.15s), then automatically vanish & unlock camera
+        lipBoostVanishTimer = setTimeout(() => {
+          lipBoostWrapper.classList.remove('popped');
+          void lipBoostWrapper.offsetWidth;
+          lipBoostWrapper.classList.add('vanishing');
+          oChuteHole.classList.remove('dispensing-glow');
+          state.lipBoostPopped = false;
+
+          // Immediately illuminate LED mirror and unlock camera as lip boost vanishes
+          unlockMirrorCamera();
+
+          // Reset coin tray so user can insert another coin anytime
+          dragCoinGhost.classList.remove('coin-inserting-anim', 'active-drag');
+          dragCoinGhost.style.opacity = '0';
+          draggableCoin.style.opacity = '1';
+          draggableCoin.classList.add('idle-float');
+          coinTrayLabel.textContent = 'COIN ACCEPTED';
+          state.coinBusy = false;
+          showToast('Camera Unlocked — Ready to Shoot');
+        }, 2150);
+      }
+
+      function unlockMirrorCamera() {
+        state.cameraUnlocked = true;
+        ledMirrorRing.classList.add('unlocked');
+        mirrorLockedUi.classList.add('hidden');
+        mirrorUnlockedUi.classList.remove('hidden');
+        mirrorUnlockedUi.classList.add('flex');
+        cameraLedDot.classList.remove('bg-[#1A2E5A]/25');
+        cameraLedDot.classList.add('bg-[#1A2E5A]', 'shadow-[0_0_8px_rgba(26,46,90,0.6)]');
+      }
+
+      function resetForAnotherCoin() {
+        closeStripModal();
+        clearTimeout(lipBoostVanishTimer);
+        state.cameraUnlocked = false;
+        state.lipBoostPopped = false;
+        state.coinBusy = false;
+        ledMirrorRing.classList.remove('unlocked');
+        oChuteHole.classList.remove('dispensing-glow');
+        lipBoostWrapper.classList.remove('popped', 'vanishing');
+        mirrorLockedUi.classList.remove('hidden');
+        mirrorUnlockedUi.classList.add('hidden');
+        mirrorUnlockedUi.classList.remove('flex');
+        cameraLedDot.classList.add('bg-[#1A2E5A]/25');
+        cameraLedDot.classList.remove('bg-[#1A2E5A]', 'shadow-[0_0_8px_rgba(26,46,90,0.6)]');
+        coinTrayLabel.textContent = 'DRAG COIN TO SLOT';
+        showToast('Ready for Another Coin');
+      }
+
+      function setupStage3Interactions() {
+        setupDraggableCoin();
+
+        // Click fallback on any of the 4 slots or menu rows
+        coinSlotBtns.forEach((btn) => {
+          btn.addEventListener('click', () => insertCoinIntoSlot(btn, false));
+        });
+
+        menuRowBtns.forEach((row) => {
+          row.addEventListener('click', () => {
+            const matchingSlot = coinSlotBtns.find((b) => b.dataset.slot === row.dataset.slot);
+            if (matchingSlot) insertCoinIntoSlot(matchingSlot, false);
+          });
+        });
+
+        // Mirror Camera Controls
+        enableCameraBtn.addEventListener('click', async () => {
+          if (state.webcamReady) {
+            stopWebcam();
+            showToast('Camera Paused');
+            return;
+          }
+          await startWebcam();
+        });
+
+        studioModeBtn.addEventListener('click', () => {
+          stopWebcam();
+          state.studioMode = true;
+          studioBadgeMirror.classList.remove('hidden');
+          studioModeBtn.classList.add('bg-[#1A2E5A]/12', 'text-[#1A2E5A]', 'font-semibold');
+          showToast('Studio Portrait Mode Active');
+        });
+
+        takeStripBtn.addEventListener('click', () => {
+          if (!state.cameraUnlocked || state.isCapturing) return;
+          runFourShotCapture();
+        });
+
+        // Modal Actions
+        document.getElementById('close-strip-modal-btn').addEventListener('click', closeStripModal);
+        document.getElementById('retake-strip-btn').addEventListener('click', () => {
+          closeStripModal();
+          setTimeout(() => runFourShotCapture(), 260);
+        });
+        document.getElementById('insert-another-coin-btn').addEventListener('click', resetForAnotherCoin);
+        document.getElementById('download-strip-btn').addEventListener('click', downloadStripPng);
+      }
+
+      // -------------------------------------------------------------------------
+      // WebRTC Webcam & 4-Shot Countdown Photo Strip Capture
+      // -------------------------------------------------------------------------
+      async function startWebcam() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          state.studioMode = true;
+          studioBadgeMirror.classList.remove('hidden');
+          showToast('Webcam unavailable — Studio Mode Active');
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
+            audio: false,
+          });
+          state.mediaStream = stream;
+          webcamVideo.srcObject = stream;
+          await webcamVideo.play();
+          webcamVideo.classList.remove('hidden');
+          mirrorAmbientBg.classList.add('hidden');
+          studioBadgeMirror.classList.add('hidden');
+          state.webcamReady = true;
+          state.studioMode = false;
+          enableCameraBtn.textContent = 'CAMERA ON';
+          studioModeBtn.classList.remove('bg-[#1A2E5A]/12', 'text-[#1A2E5A]', 'font-semibold');
+          showToast('Live Mirror Camera Active');
+        } catch (err) {
+          state.webcamReady = false;
+          state.studioMode = true;
+          studioBadgeMirror.classList.remove('hidden');
+          showToast('Camera permission denied — Studio Mode Ready');
+        }
+      }
+
+      function stopWebcam() {
+        if (state.mediaStream) {
+          state.mediaStream.getTracks().forEach((t) => t.stop());
+          state.mediaStream = null;
+        }
+        webcamVideo.srcObject = null;
+        webcamVideo.classList.add('hidden');
+        mirrorAmbientBg.classList.remove('hidden');
+        state.webcamReady = false;
+        enableCameraBtn.textContent = 'ENABLE CAMERA';
+      }
+
+      const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+
+      async function runFourShotCapture() {
+        state.isCapturing = true;
+        state.capturedFrames = [];
+        mirrorUnlockedUi.classList.add('opacity-0', 'pointer-events-none');
+        countdownOverlay.classList.remove('hidden');
+        countdownOverlay.classList.add('flex');
+
+        const shotCount = 4;
+        for (let shot = 0; shot < shotCount; shot++) {
+          countdownShotLabel.textContent = `SHOT ${shot + 1} OF ${shotCount}`;
+          for (let n = 3; n >= 1; n--) {
+            countdownNumber.textContent = String(n);
+            await wait(620);
+          }
+
+          playSound('shutter');
+          mirrorFlash.classList.remove('flash-trigger');
+          void mirrorFlash.offsetWidth;
+          mirrorFlash.classList.add('flash-trigger');
+
+          state.capturedFrames.push(captureSingleFrame(shot));
+          await wait(420);
+        }
+
+        countdownOverlay.classList.add('hidden');
+        countdownOverlay.classList.remove('flex');
+        mirrorUnlockedUi.classList.remove('opacity-0', 'pointer-events-none');
+        state.isCapturing = false;
+
+        composeDarkNavyStrip();
+        openStripModal();
+      }
+
+      function captureSingleFrame(shotIndex) {
+        const fw = 304, fh = 188;
+        const c = document.createElement('canvas');
+        c.width = fw;
+        c.height = fh;
+        const ctx = c.getContext('2d');
+
+        if (state.webcamReady && webcamVideo.videoWidth > 0) {
+          const vw = webcamVideo.videoWidth;
+          const vh = webcamVideo.videoHeight;
+          const targetAspect = fw / fh;
+          const srcAspect = vw / vh;
+          let sx = 0, sy = 0, sw = vw, sh = vh;
+          if (srcAspect > targetAspect) {
+            sw = vh * targetAspect;
+            sx = (vw - sw) / 2;
+          } else {
+            sh = vw / targetAspect;
+            sy = (vh - sh) / 2;
+          }
+
+          ctx.save();
+          ctx.translate(fw, 0);
+          ctx.scale(-1, 1);
+          ctx.filter = 'contrast(1.06) saturate(0.92) brightness(1.03)';
+          ctx.drawImage(webcamVideo, sx, sy, sw, sh, 0, 0, fw, fh);
+          ctx.restore();
+
+          const vig = ctx.createRadialGradient(fw / 2, fh / 2, fw * 0.28, fw / 2, fh / 2, fw * 0.74);
+          vig.addColorStop(0, 'rgba(255, 243, 220, 0.04)');
+          vig.addColorStop(1, 'rgba(20, 36, 73, 0.24)');
+          ctx.fillStyle = vig;
+          ctx.fillRect(0, 0, fw, fh);
+        } else {
+          // Stylized Editorial Studio Mode Portrait Fallback
+          const poses = [
+            { dx: -10, tilt: -0.05, sc: 1.0, glow: 0.5 },
+            { dx: 12, tilt: 0.06, sc: 1.08, glow: 0.58 },
+            { dx: -4, tilt: -0.02, sc: 1.12, glow: 0.52 },
+            { dx: 8, tilt: 0.04, sc: 1.02, glow: 0.6 },
+          ];
+          const p = poses[shotIndex % poses.length];
+
+          const grad = ctx.createRadialGradient(fw / 2 + p.dx * 2, fh * 0.42, 12, fw / 2, fh / 2, fw * 0.85);
+          grad.addColorStop(0, `rgba(255, 243, 220, ${p.glow})`);
+          grad.addColorStop(0.52, '#E5E7EC');
+          grad.addColorStop(1, '#CBD2DF');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, fw, fh);
+
+          // Glowing vertical oval mirror reflection
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+          ctx.lineWidth = 4;
+          const rx = fw / 2 - 26 + p.dx, ry = 18;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(rx, ry, 52, 108, 24);
+          else ctx.rect(rx, ry, 52, 108);
+          ctx.stroke();
+
+          // Minimalist Dark Navy editorial silhouette
+          ctx.save();
+          ctx.translate(fw / 2 + p.dx, fh + 10);
+          ctx.rotate(p.tilt);
+          ctx.scale(p.sc, p.sc);
+          ctx.fillStyle = 'rgba(26, 46, 90, 0.85)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 62, 48, 0, Math.PI, 0);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(0, -72, 26, 33, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          ctx.fillStyle = 'rgba(26, 46, 90, 0.55)';
+          ctx.font = '600 10px monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(`0${shotIndex + 1}`, fw - 12, fh - 12);
+        }
+
+        return c;
+      }
+
+      function composeDarkNavyStrip() {
+        const ctx = stripCanvas.getContext('2d');
+        const W = stripCanvas.width;
+        const H = stripCanvas.height;
+
+        // Rich Dark Navy Strip Base (#1A2E5A)
+        ctx.fillStyle = '#1A2E5A';
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.strokeStyle = 'rgba(255, 243, 220, 0.14)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, 10, W - 20, H - 20);
+
+        const padX = 28;
+        const topY = 28;
+        const gap = 16;
+        const frameW = W - padX * 2;
+        const frameH = 188;
+
+        state.capturedFrames.forEach((frameC, i) => {
+          const y = topY + i * (frameH + gap);
+          ctx.drawImage(frameC, padX, y, frameW, frameH);
+        });
+
+        // Crisp White 'rhode' Footer & Date Stamp
+        const footerY = topY + 4 * (frameH + gap) + 50;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '800 44px "Plus Jakarta Sans", "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('rhode', W / 2, footerY);
+
+        const today = new Date().toLocaleDateString('en-US', {
+          month: 'short',
+          day: '2-digit',
+          year: 'numeric',
+        }).toUpperCase();
+
+        ctx.fillStyle = 'rgba(255, 243, 220, 0.78)';
+        ctx.font = '500 10.5px "Inter", sans-serif';
+        ctx.fillText(`BIRTHDAY NAVY · ${today}`, W / 2, footerY + 26);
+
+        stripShadeMeta.innerHTML = `Dispensed with <span class="text-[#1A2E5A] font-semibold">${state.selectedShade}</span>.`;
+      }
+
+      function openStripModal() {
+        stripResultModal.classList.remove('hidden');
+        stripResultModal.classList.add('flex');
+      }
+
+      function closeStripModal() {
+        stripResultModal.classList.add('hidden');
+        stripResultModal.classList.remove('flex');
+      }
+
+      function downloadStripPng() {
+        try {
+          const link = document.createElement('a');
+          link.download = 'rhode-dark-navy-photobooth-strip.png';
+          link.href = stripCanvas.toDataURL('image/png');
+          link.click();
+          showToast('Photo Strip Downloaded');
+        } catch (e) {
+          showToast('Unable to export PNG');
+        }
+      }
+
+      // -------------------------------------------------------------------------
+      // Boot on Window Load
+      // -------------------------------------------------------------------------
+      window.onload = function () {
+        if (initThreeScene()) {
+          setupStage12Interactions();
+          setupStage3Interactions();
+          animate();
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
