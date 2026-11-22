@@ -888,8 +888,8 @@
      * ============================================================================
      * RHODE DARK NAVY 3D PHOTOBOOTH PORTAL
      * ============================================================================
-     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#14203A) 3D booth
-     *   with low envMapIntensity (0.26) so reflections never wash out the navy hue,
+     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#172746) 3D booth
+     *   with controlled studio reflections so reflections never wash out the navy hue,
      *   flat square top fascia, rounded vertical corners, deep navy pleated curtain
      *   (#142449), crisp white 'rhode' logos, and clean white interior visible in Stage 2.
      * - Stage 3: Clean matte white interior wall (#F5F5F2), no right portal,
@@ -1132,20 +1132,20 @@
         c.width = size;
         c.height = size;
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#121E36';
+        ctx.fillStyle = '#1B2B47';
         ctx.fillRect(0, 0, size, size);
         for (let y = 0; y < size; y += 2) {
-          ctx.fillStyle = y % 4 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(0,0,0,0.055)';
+          ctx.fillStyle = y % 4 === 0 ? 'rgba(210,224,255,0.08)' : 'rgba(0,0,0,0.09)';
           ctx.fillRect(0, y, size, 1);
         }
         for (let x = 0; x < size; x += 3) {
-          ctx.fillStyle = 'rgba(255,255,255,0.012)';
+          ctx.fillStyle = 'rgba(210,224,255,0.07)';
           ctx.fillRect(x, 0, 1, size);
         }
         const tex = new THREE.CanvasTexture(c);
         tex.encoding = THREE.sRGBEncoding;
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(4, 8);
+        tex.repeat.set(2, 4);
         return tex;
       }
 
@@ -1318,13 +1318,12 @@
 
         // Velvety Matte-Satin Dark Navy Blue Exterior matching the studio reference
         const navyExteriorMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color('#14203A').convertSRGBToLinear(),
-          roughness: 0.54,
-          metalness: 0.10,
-          roughnessMap: noiseTex,
+          color: new THREE.Color('#172746').convertSRGBToLinear(),
+          roughness: 0.48,
+          metalness: 0.28,
           bumpMap: noiseTex,
-          bumpScale: 0.0006,
-          envMapIntensity: 0.26,
+          bumpScale: 0.00022,
+          envMapIntensity: 0.22,
         });
 
         // Subtle deeper navy recessed seam & base plinth material
@@ -1452,23 +1451,29 @@
         const panelCenterX = (doorX + doorW / 2 + 0.14 + (W / 2 - R)) / 2 + 0.05;
         const screenW = 0.155, screenH = 0.215, screenY = 1.15;
 
+        const hardwareTrimMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#506685').convertSRGBToLinear(),
+          roughness: 0.52,
+          metalness: 0.22,
+          envMapIntensity: 0.32,
+        });
         const bezelMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(screenW + 0.014, screenH + 0.014, 0.008),
-          seamMat
+          new THREE.BoxGeometry(screenW + 0.018, screenH + 0.018, 0.012),
+          hardwareTrimMat
         );
-        bezelMesh.position.set(panelCenterX, screenY, D / 2 - 0.001);
+        bezelMesh.position.set(panelCenterX, screenY, D / 2 + 0.004);
         group.add(bezelMesh);
 
         const screenMesh = new THREE.Mesh(
           new THREE.PlaneGeometry(screenW, screenH),
           new THREE.MeshStandardMaterial({
             map: createTouchscreenTexture(),
-            roughness: 0.07,
+            roughness: 0.19,
             metalness: 0.15,
-            envMapIntensity: 1.6,
+            envMapIntensity: 0.62,
           })
         );
-        screenMesh.position.set(panelCenterX, screenY, D / 2 + 0.0035);
+        screenMesh.position.set(panelCenterX, screenY, D / 2 + 0.0105);
         group.add(screenMesh);
 
         // 9. Front-Right Panel: Matching Dark Navy Photo-Dispensing Tray
@@ -1480,7 +1485,7 @@
         trayBottom.position.set(0, -trayH / 2 + 0.006, trayD / 2);
         trayGroup.add(trayBottom);
 
-        const trayFront = new THREE.Mesh(new THREE.BoxGeometry(trayW, trayH * 0.72, 0.01), navyExteriorMat);
+        const trayFront = new THREE.Mesh(new THREE.BoxGeometry(trayW, trayH * 0.72, 0.01), hardwareTrimMat);
         trayFront.position.set(0, -0.004, trayD - 0.005);
         trayGroup.add(trayFront);
 
@@ -1490,8 +1495,12 @@
           trayGroup.add(s);
         });
 
-        const slotMesh = new THREE.Mesh(new THREE.BoxGeometry(trayW - 0.03, 0.014, 0.008), glossyBlackMat);
-        slotMesh.position.set(0, 0.016, 0.001);
+        const slotRim = new THREE.Mesh(new THREE.BoxGeometry(trayW, 0.033, 0.014), hardwareTrimMat);
+        slotRim.position.set(0, 0.019, 0.007);
+        trayGroup.add(slotRim);
+
+        const slotMesh = new THREE.Mesh(new THREE.BoxGeometry(trayW - 0.016, 0.021, 0.004), glossyBlackMat);
+        slotMesh.position.set(0, 0.019, 0.015);
         trayGroup.add(slotMesh);
         group.add(trayGroup);
 
