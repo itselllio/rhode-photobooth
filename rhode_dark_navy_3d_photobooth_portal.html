@@ -888,8 +888,8 @@
      * ============================================================================
      * RHODE DARK NAVY 3D PHOTOBOOTH PORTAL
      * ============================================================================
-     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#1A2E5A / #1B3160) 3D booth
-     *   with low envMapIntensity (0.35) so reflections never wash out the navy hue,
+     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#14203A) 3D booth
+     *   with low envMapIntensity (0.26) so reflections never wash out the navy hue,
      *   flat square top fascia, rounded vertical corners, deep navy pleated curtain
      *   (#142449), crisp white 'rhode' logos, and clean white interior visible in Stage 2.
      * - Stage 3: Clean matte white interior wall (#F5F5F2), no right portal,
@@ -1318,13 +1318,13 @@
 
         // Velvety Matte-Satin Dark Navy Blue Exterior matching the studio reference
         const navyExteriorMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color('#182744').convertSRGBToLinear(),
+          color: new THREE.Color('#14203A').convertSRGBToLinear(),
           roughness: 0.54,
           metalness: 0.10,
           roughnessMap: noiseTex,
           bumpMap: noiseTex,
           bumpScale: 0.0006,
-          envMapIntensity: 0.42,
+          envMapIntensity: 0.26,
         });
 
         // Subtle deeper navy recessed seam & base plinth material
@@ -1342,7 +1342,7 @@
           roughness: 0.82,
           metalness: 0.04,
           side: THREE.DoubleSide,
-          envMapIntensity: 0.22,
+          envMapIntensity: 0.16,
         });
 
         // Clean White Interior Wall Material (Visible when curtain opens in Stage 2)
