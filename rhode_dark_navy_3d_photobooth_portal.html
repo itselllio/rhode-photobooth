@@ -888,7 +888,7 @@
      * ============================================================================
      * RHODE DARK NAVY 3D PHOTOBOOTH PORTAL
      * ============================================================================
-     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#172746) 3D booth
+     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#26334D) 3D booth
      *   with controlled studio reflections so reflections never wash out the navy hue,
      *   flat square top fascia, rounded vertical corners, deep navy pleated curtain
      *   (#142449), crisp white 'rhode' logos, and clean white interior visible in Stage 2.
@@ -1132,20 +1132,20 @@
         c.width = size;
         c.height = size;
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#1B2B47';
+        ctx.fillStyle = '#192642';
         ctx.fillRect(0, 0, size, size);
         for (let y = 0; y < size; y += 2) {
-          ctx.fillStyle = y % 4 === 0 ? 'rgba(210,224,255,0.08)' : 'rgba(0,0,0,0.09)';
+          ctx.fillStyle = y % 4 === 0 ? 'rgba(210,224,255,0.027)' : 'rgba(0,0,0,0.035)';
           ctx.fillRect(0, y, size, 1);
         }
         for (let x = 0; x < size; x += 3) {
-          ctx.fillStyle = 'rgba(210,224,255,0.07)';
+          ctx.fillStyle = 'rgba(210,224,255,0.022)';
           ctx.fillRect(x, 0, 1, size);
         }
         const tex = new THREE.CanvasTexture(c);
         tex.encoding = THREE.sRGBEncoding;
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(2, 4);
+        tex.repeat.set(3, 6);
         return tex;
       }
 
@@ -1318,9 +1318,9 @@
 
         // Velvety Matte-Satin Dark Navy Blue Exterior matching the studio reference
         const navyExteriorMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color('#172746').convertSRGBToLinear(),
-          roughness: 0.48,
-          metalness: 0.28,
+          color: new THREE.Color('#26334D').convertSRGBToLinear(),
+          roughness: 0.56,
+          metalness: 0.20,
           bumpMap: noiseTex,
           bumpScale: 0.00022,
           envMapIntensity: 0.22,
@@ -1452,14 +1452,14 @@
         const screenW = 0.155, screenH = 0.215, screenY = 1.15;
 
         const hardwareTrimMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color('#506685').convertSRGBToLinear(),
+          color: new THREE.Color('#344563').convertSRGBToLinear(),
           roughness: 0.52,
           metalness: 0.22,
           envMapIntensity: 0.32,
         });
         const bezelMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(screenW + 0.018, screenH + 0.018, 0.012),
-          hardwareTrimMat
+          new THREE.BoxGeometry(screenW + 0.008, screenH + 0.008, 0.012),
+          glossyBlackMat
         );
         bezelMesh.position.set(panelCenterX, screenY, D / 2 + 0.004);
         group.add(bezelMesh);
@@ -1495,7 +1495,7 @@
           trayGroup.add(s);
         });
 
-        const slotRim = new THREE.Mesh(new THREE.BoxGeometry(trayW, 0.033, 0.014), hardwareTrimMat);
+        const slotRim = new THREE.Mesh(new THREE.BoxGeometry(trayW, 0.033, 0.014), glossyBlackMat);
         slotRim.position.set(0, 0.019, 0.007);
         trayGroup.add(slotRim);
 
@@ -1511,7 +1511,7 @@
           depthWrite: false,
         });
 
-        const frontLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.41, 0.154), whiteLogoMat);
+        const frontLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.53, 0.199), whiteLogoMat);
         frontLogo.position.set(panelCenterX - 0.01, 0.28, D / 2 + 0.002);
         group.add(frontLogo);
 
@@ -1613,7 +1613,7 @@
 
       function buildAccordionCurtain(parentGroup, curtainMat, silverMat) {
         const { baseH, D, wallT, doorW, doorH, doorX } = BOOTH;
-        const curtainH = doorH - 0.012;
+        const curtainH = doorH + 0.035;
         const curtainZ = D / 2 - wallT * 0.56;
 
         curtainGeometry = new THREE.PlaneGeometry(doorW, curtainH, 128, 16);
@@ -1658,7 +1658,7 @@
         const pos = curtainGeometry.attributes.position;
         const numPleats = 6.0;
         const compressedW = lerp(doorW, 0.14, openFactor);
-        const pleatAmp = lerp(0.046, 0.056, openFactor);
+        const pleatAmp = lerp(0.026, 0.047, openFactor);
         const leftEdge = -doorW / 2;
 
         for (let i = 0; i < pos.count; i++) {
@@ -1737,16 +1737,28 @@
         rimLight.position.set(0, 4.2, -5.5);
         scene.add(rimLight);
 
-        // Grounded Soft Contact Shadow Plane
-        const shadowPlane = new THREE.Mesh(
-          new THREE.PlaneGeometry(18, 18),
-          new THREE.ShadowMaterial({ opacity: 0.22 })
-        );
-        shadowPlane.rotation.x = -Math.PI / 2;
-        shadowPlane.receiveShadow = true;
-        scene.add(shadowPlane);
-
         boothGroup = buildPhotoboothModel();
+
+        // Soft contact shadow that follows the booth as it rotates.
+        const shadowCanvas = document.createElement('canvas');
+        shadowCanvas.width = shadowCanvas.height = 128;
+        const shadowContext = shadowCanvas.getContext('2d');
+        const shadowGradient = shadowContext.createRadialGradient(64, 64, 14, 64, 64, 64);
+        shadowGradient.addColorStop(0, 'rgba(10, 16, 28, 0.44)');
+        shadowGradient.addColorStop(0.64, 'rgba(10, 16, 28, 0.28)');
+        shadowGradient.addColorStop(1, 'rgba(10, 16, 28, 0)');
+        shadowContext.fillStyle = shadowGradient;
+        shadowContext.fillRect(0, 0, 128, 128);
+        const contactShadow = new THREE.Mesh(
+          new THREE.PlaneGeometry(BOOTH.W * 1.23, BOOTH.D * 1.40),
+          new THREE.MeshBasicMaterial({
+            map: new THREE.CanvasTexture(shadowCanvas),
+            transparent: true,
+            depthWrite: false,
+          })
+        );
+        contactShadow.rotation.x = -Math.PI / 2;
+        boothGroup.add(contactShadow);
         scene.add(boothGroup);
 
         clock = new THREE.Clock();
