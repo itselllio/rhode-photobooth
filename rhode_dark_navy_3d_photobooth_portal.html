@@ -813,7 +813,6 @@
       <div class="flex items-center justify-between mb-5">
         <div>
           <span class="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#64728C]">rhode photobooth</span>
-          <h2 class="font-rhode font-bold text-2xl tracking-tight text-[#1A2E5A]">Your Dark Navy Strip</h2>
         </div>
         <button id="close-strip-modal-btn" class="w-9 h-9 rounded-full bg-[#1A2E5A]/8 hover:bg-[#1A2E5A]/15 flex items-center justify-center text-[#1A2E5A] transition-colors" aria-label="Close">
           ✕
@@ -823,9 +822,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
         <!-- Rendered High-Resolution 4-Frame Strip -->
         <div class="sm:col-span-6 flex justify-center">
-          <div class="p-3.5 rounded-2xl bg-[#ECECE7] border border-[#DFDFDA] shadow-inner">
-            <canvas id="strip-canvas" width="360" height="960" class="w-[185px] sm:w-[210px] h-auto rounded-lg shadow-2xl"></canvas>
-          </div>
+          <canvas id="strip-canvas" width="360" height="930" class="w-[185px] sm:w-[210px] h-auto rounded-lg shadow-lg" role="img" aria-label="Four-photo Rhode strip"></canvas>
         </div>
 
         <!-- Actions -->
@@ -872,7 +869,7 @@
      * ============================================================================
      * RHODE DARK NAVY 3D PHOTOBOOTH PORTAL
      * ============================================================================
-     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#26334D) 3D booth
+     * - Stage 1 & 2: Unmistakably rich Dark Navy Blue (#24324F) 3D booth
      *   with controlled studio reflections so reflections never wash out the navy hue,
      *   flat square top fascia, rounded vertical corners, deep navy pleated curtain
      *   (#142449), crisp white 'rhode' logos, and clean white interior visible in Stage 2.
@@ -890,8 +887,8 @@
       // Global State
       // -------------------------------------------------------------------------
       const state = {
-        targetRotY: 0,
-        currentRotY: 0,
+        targetRotY: 0.32,
+        currentRotY: 0.32,
         targetScroll: 0,
         currentScroll: 0,
         currentCurtainOpen: 0,
@@ -927,7 +924,7 @@
         D: 1.25,
         R: 0.145,
         wallT: 0.10,
-        capH: 0.135,
+        capH: 0.095,
         baseH: 0.032,
         doorW: 0.72,
         doorH: 1.74,
@@ -1301,9 +1298,9 @@
 
         // Velvety Matte-Satin Dark Navy Blue Exterior matching the studio reference
         const navyExteriorMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color('#26334D').convertSRGBToLinear(),
-          roughness: 0.56,
-          metalness: 0.20,
+          color: new THREE.Color('#24324F').convertSRGBToLinear(),
+          roughness: 0.62,
+          metalness: 0.16,
           bumpMap: noiseTex,
           bumpScale: 0.00022,
           envMapIntensity: 0.22,
@@ -1460,7 +1457,7 @@
         group.add(screenMesh);
 
         // 9. Front-Right Panel: Matching Dark Navy Photo-Dispensing Tray
-        const trayY = 0.915, trayW = 0.175, trayD = 0.048, trayH = 0.036;
+        const trayY = 0.915, trayW = 0.175, trayD = 0.066, trayH = 0.036;
         const trayGroup = new THREE.Group();
         trayGroup.position.set(panelCenterX, trayY, D / 2);
 
@@ -1468,8 +1465,12 @@
         trayBottom.position.set(0, -trayH / 2 + 0.006, trayD / 2);
         trayGroup.add(trayBottom);
 
-        const trayFront = new THREE.Mesh(new THREE.BoxGeometry(trayW, trayH * 0.72, 0.01), hardwareTrimMat);
-        trayFront.position.set(0, -0.004, trayD - 0.005);
+        const trayLipGeometry = new THREE.ExtrudeGeometry(
+          makeRoundedRectShape(trayW, trayH * 0.72, 0.006),
+          { depth: 0.008, bevelEnabled: false, curveSegments: 6 }
+        );
+        const trayFront = new THREE.Mesh(trayLipGeometry, hardwareTrimMat);
+        trayFront.position.set(0, -0.004, trayD - 0.008);
         trayGroup.add(trayFront);
 
         [-1, 1].forEach((side) => {
@@ -1639,15 +1640,16 @@
         if (!curtainGeometry || !curtainBaseData) return;
         const { doorW, doorX } = BOOTH;
         const pos = curtainGeometry.attributes.position;
-        const numPleats = 6.0;
+        const numPleats = 5;
         const compressedW = lerp(doorW, 0.14, openFactor);
-        const pleatAmp = lerp(0.026, 0.047, openFactor);
+        const pleatAmp = lerp(0.034, 0.047, openFactor);
         const leftEdge = -doorW / 2;
 
         for (let i = 0; i < pos.count; i++) {
           const u = curtainBaseData[i * 2];
           pos.setX(i, leftEdge + u * compressedW);
-          pos.setZ(i, Math.sin(u * Math.PI * 2 * numPleats) * pleatAmp);
+          const phase = u * Math.PI * 2 * numPleats;
+          pos.setZ(i, (Math.sin(phase) - 0.12 * Math.sin(phase * 3)) * pleatAmp);
         }
         pos.needsUpdate = true;
         curtainGeometry.computeVertexNormals();
@@ -2269,7 +2271,7 @@
           countdownShotLabel.textContent = `SHOT ${shot + 1} OF ${shotCount}`;
           for (let n = 3; n >= 1; n--) {
             countdownNumber.textContent = String(n);
-            await wait(620);
+            await wait(830);
           }
 
           if (state.targetScroll === 0 || (!useStudioMode && (!state.webcamReady || webcamVideo.readyState < 2 || !state.mediaStream?.getVideoTracks().some((track) => track.readyState === 'live')))) break;
@@ -2388,10 +2390,6 @@
         ctx.fillStyle = '#1A2E5A';
         ctx.fillRect(0, 0, W, H);
 
-        ctx.strokeStyle = 'rgba(255, 243, 220, 0.14)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(10, 10, W - 20, H - 20);
-
         const padX = 28;
         const topY = 28;
         const gap = 16;
@@ -2403,22 +2401,12 @@
           ctx.drawImage(frameC, padX, y, frameW, frameH);
         });
 
-        // Crisp White 'rhode' Footer & Date Stamp
+        // Rhode wordmark
         const footerY = topY + 4 * (frameH + gap) + 50;
         ctx.fillStyle = '#FFFFFF';
         ctx.font = '800 44px "Plus Jakarta Sans", "Inter", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('rhode', W / 2, footerY);
-
-        const today = new Date().toLocaleDateString('en-US', {
-          month: 'short',
-          day: '2-digit',
-          year: 'numeric',
-        }).toUpperCase();
-
-        ctx.fillStyle = 'rgba(255, 243, 220, 0.78)';
-        ctx.font = '500 10.5px "Inter", sans-serif';
-        ctx.fillText(`BIRTHDAY NAVY · ${today}`, W / 2, footerY + 26);
 
         stripShadeMeta.innerHTML = `Dispensed with <span class="text-[#1A2E5A] font-semibold">${state.selectedShade}</span>.`;
       }
